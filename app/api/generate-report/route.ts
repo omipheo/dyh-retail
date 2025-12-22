@@ -280,6 +280,23 @@ function mapQuestionnairesToTemplateData(questionnaire1: any, questionnaire2?: a
     return num > 0 ? num.toLocaleString("en-AU", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : ""
   }
 
+  const totalHours =
+    merged.hours_per_week && merged.weeks_per_year
+      ? (toNumber(merged.hours_per_week) * toNumber(merged.weeks_per_year)).toString()
+      : ""
+
+  const reportDate =
+    merged.report_date ||
+    merged.REPORT_DATE ||
+    (merged.tax_year ? `${merged.tax_year}-06-30` : new Date().toISOString().split("T")[0])
+
+  const startDateOfHomeBusiness =
+    merged.start_date_of_home_business ||
+    merged.START_DATE_OF_HOME_BUSINESS ||
+    merged.business_start_date ||
+    merged.CLIENT_BUSINESS_START_DATE ||
+    ""
+
   // Map all fields from both questionnaires to template placeholders
   return {
     // Client Information
@@ -414,10 +431,7 @@ function mapQuestionnairesToTemplateData(questionnaire1: any, questionnaire2?: a
     // Business Use Calculation
     HOURS_PER_WEEK: merged.hours_per_week?.toString() || merged.ss_q48_time?.match(/\d+/)?.[0] || "",
     WEEKS_PER_YEAR: merged.weeks_per_year?.toString() || "52",
-    TOTAL_HOURS:
-      merged.hours_per_week && merged.weeks_per_year
-        ? (toNumber(merged.hours_per_week) * toNumber(merged.weeks_per_year)).toString()
-        : "",
+    TOTAL_HOURS: totalHours,
 
     // Years Operating
     YEARS_OPERATED: merged.q20_years_operated || merged.years_operating_from_home || "",
@@ -499,6 +513,81 @@ function mapQuestionnairesToTemplateData(questionnaire1: any, questionnaire2?: a
 
     // Total Claims
     TOTAL_CLAIM_PER_THE_RUNNING_COST_METHOD: "", // This will be calculated if needed
+
+    // Aliases for template placeholders (the template uses spaces / different names)
+    "CLIENT ADDRESS": merged.property_address || merged.CLIENT_ADDRESS || "",
+    "CLIENT_ NAME": merged.client_name || merged.CLIENT_NAME || "",
+    REPORT_DATE: reportDate,
+    CLIENT_FIRST_NAME: merged.client_first_name || merged.CLIENT_FIRST_NAME || (merged.client_name || "").split(" ")[0] || "",
+    CLIENT_LOCAL_COUNCIL: merged.client_local_council || merged.local_council || merged.council || "",
+    TOTAL_FLOOR_AREA_M2: merged.q16_total_floor_space || merged.total_floor_space_sqm || "",
+    BUILDING_DEPRECIATION_VALUE: merged.depreciation || merged.q29_equipment_depreciation || "",
+    DEDICATED_OFFICE_AREA_M2: merged.dedicated_office_area_m2 || merged.business_floor_space_sqm || merged.q17_business_floor_space || "",
+    DEDICATED_MEETING_AREA_M2: merged.dedicated_meeting_area_m2 || "",
+    DEDICATED_ARCHIVE_AREA_M2: merged.dedicated_archive_area_m2 || "",
+    TOTAL_BUSINESS_USE_AREA_M2: merged.business_floor_space_sqm || merged.q17_business_floor_space || "",
+    MORTGAGE: merged.mortgage_balance || merged.mortgage || "",
+    BUP: merged.bup_percentage?.toString() || "",
+    MORTGAGE_DEDUCTIBLE: merged.mortgage_interest_deductible || "",
+    RATES: merged.council_rates || merged.q29_council_rates || "",
+    WATER: merged.water_rates || merged.q29_water_rates || "",
+    TOTAL_PROPERTY_EXPENSES: merged.total_property_expenses || "",
+    TOTAL_DEDUCTIBLE: merged.total_deductible || "",
+    TOTAL_RUNNING_EXPENSES: merged.total_running_expenses || "",
+    TOTAL_HABITABLE_FLOOR_AREA: merged.total_habitable_floor_area || merged.total_floor_space_sqm || "",
+    HOME_OFFICE_FLOOR_AREA: merged.home_office_floor_area || merged.business_floor_space_sqm || merged.q17_business_floor_space || "",
+    MEETING_AREA_FLOOR_AREA: merged.meeting_area_floor_area || "",
+    ARCHIVE_ROOM_FLOOR_AREA: merged.archive_room_floor_area || "",
+    TOTAL_BUSINESS_USE_FLOOR_AREA: merged.total_business_use_floor_area || merged.business_floor_space_sqm || "",
+    BUSINESS_USE_PERCENTAGE: merged.bup_percentage?.toString() || "",
+    TOTAL_RUNNING_COSTS_DEDUCTIBLE: merged.total_running_costs_deductible || "",
+    TOTAL_WEEKLY_HOURS_WORKED: merged.hours_per_week?.toString() || "",
+    TOTAL_NUMBER_OF_WEEKS_WORKED: merged.weeks_per_year?.toString() || "52",
+    TOTAL_NUMBER_OF_HOURS_WORKED: totalHours,
+    TOTAL_FIXED_RATE_METHOD_CLAIM: merged.total_fixed_rate_method_claim || "",
+    "TOTAL_CLAIM_ PER_ THE_RUNNING_COST_METHOD": merged.total_claim_per_running_cost_method || "",
+    "TOTAL_CLAIM_ PER_ THE_FIXED_COST_METHOD": merged.total_claim_per_fixed_cost_method || "",
+    BEST_METHOD_COMPARISON: merged.best_method_comparison || "",
+    RECOMMENDED_METHOD: merged.recommended_method || merged.strategy_name || merged.strategy || "",
+    TOTAL_PROPERTY_DEDUCTIBLE: merged.total_property_deductible || "",
+    RUNNING_METHOD: merged.running_method || "",
+    TOTAL_ANNUAL_DEDUCTION: merged.total_annual_deduction || "",
+    START_DATE_OF_HOME_BUSINESS: startDateOfHomeBusiness,
+
+    // Additional aliases to satisfy template placeholders without editing the DOCX
+    "Local Council": merged.client_local_council || merged.local_council || merged.council || "",
+    LOCAL_COUNCIL: merged.client_local_council || merged.local_council || merged.council || "",
+    ABN: merged.abn || merged.CLIENT_ABN || "",
+    BUSINESS_START_DATE: merged.business_start_date || merged.CLIENT_BUSINESS_START_DATE || startDateOfHomeBusiness || "",
+    "Business Start Date": merged.business_start_date || merged.CLIENT_BUSINESS_START_DATE || startDateOfHomeBusiness || "",
+    TOTAL_FLOOR_AREA: merged.q16_total_floor_space || merged.total_floor_space_sqm || "",
+    "Total Floor Area": merged.q16_total_floor_space || merged.total_floor_space_sqm || "",
+    BUILDING_DEPRECIATION: merged.depreciation || merged.q29_equipment_depreciation || "",
+    "Building Depreciation (2.5% p.a.)": merged.depreciation || merged.q29_equipment_depreciation || "",
+    HOME_OFFICE: merged.home_office_floor_area || merged.business_floor_space_sqm || merged.q17_business_floor_space || "",
+    "Home Office": merged.home_office_floor_area || merged.business_floor_space_sqm || merged.q17_business_floor_space || "",
+    MEETING_AREA: merged.meeting_area_floor_area || merged.dedicated_meeting_area_m2 || "",
+    "Meeting Area": merged.meeting_area_floor_area || merged.dedicated_meeting_area_m2 || "",
+    ARCHIVE_ROOM: merged.archive_room_floor_area || merged.dedicated_archive_area_m2 || "",
+    "Archive Room": merged.archive_room_floor_area || merged.dedicated_archive_area_m2 || "",
+    TOTAL_BUSINESS_USE_AREA: merged.total_business_use_area_m2 || merged.business_floor_space_sqm || merged.q17_business_floor_space || "",
+    "Total Business Use Area": merged.total_business_use_area_m2 || merged.business_floor_space_sqm || merged.q17_business_floor_space || "",
+    "Council Rates": merged.council_rates || merged.q29_council_rates || "",
+    "Water Rates": merged.water_rates || merged.q29_water_rates || "",
+    "Total Property Expenses": merged.total_property_expenses || "",
+    TOTAL_PROPERTY_EXPENSES_ALIAS: merged.total_property_expenses || "",
+    TOTAL_DEDUCTIBLE_ALIAS: merged.total_deductible || "",
+    TOTAL_RUNNING_EXPENSES_ALIAS: merged.total_running_expenses || "",
+    TOTAL_BUSINESS_USE_FLOOR_AREA_ALIAS: merged.total_business_use_floor_area || merged.business_floor_space_sqm || "",
+    TOTAL_HABITABLE_FLOOR_AREA_ALIAS: merged.total_habitable_floor_area || merged.total_floor_space_sqm || "",
+    BUSINESS_USE_PERCENTAGE_ALIAS: merged.bup_percentage?.toString() || "",
+    "TOTAL_CLAIM_ PER_ THE_RUNNING_COST_METHOD_ALIAS": merged.total_claim_per_running_cost_method || "",
+    "TOTAL_CLAIM_ PER_ THE_FIXED_COST_METHOD_ALIAS": merged.total_claim_per_fixed_cost_method || "",
+    BEST_METHOD_COMPARISON_ALIAS: merged.best_method_comparison || "",
+    TOTAL_PROPERTY_DEDUCTIBLE_ALIAS: merged.total_property_deductible || "",
+    RUNNING_METHOD_ALIAS: merged.running_method || "",
+    TOTAL_ANNUAL_DEDUCTION_ALIAS: merged.total_annual_deduction || "",
+    START_DATE_OF_HOME_BUSINESS_ALIAS: startDateOfHomeBusiness,
 
     // Pass through any additional fields (flatten nested objects)
     ...Object.fromEntries(
