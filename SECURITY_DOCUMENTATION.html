@@ -1,0 +1,1380 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tax Practice Application - Security & Compliance Documentation</title>
+    <style>
+        body {
+            font-family: 'Calibri', 'Arial', sans-serif;
+            line-height: 1.6;
+            max-width: 8.5in;
+            margin: 0 auto;
+            padding: 1in;
+            color: #000;
+            background: #fff;
+        }
+        h1 {
+            color: #1a5490;
+            font-size: 24pt;
+            border-bottom: 3px solid #1a5490;
+            padding-bottom: 10px;
+            margin-top: 0;
+        }
+        h2 {
+            color: #2563eb;
+            font-size: 18pt;
+            margin-top: 24pt;
+            margin-bottom: 12pt;
+            border-bottom: 1px solid #cbd5e1;
+            padding-bottom: 6px;
+        }
+        h3 {
+            color: #334155;
+            font-size: 14pt;
+            margin-top: 16pt;
+            margin-bottom: 8pt;
+        }
+        h4 {
+            color: #475569;
+            font-size: 12pt;
+            margin-top: 12pt;
+            margin-bottom: 6pt;
+        }
+        p {
+            margin: 8pt 0;
+        }
+        ul, ol {
+            margin: 8pt 0;
+            padding-left: 24pt;
+        }
+        li {
+            margin: 4pt 0;
+        }
+        .header-section {
+            background: #f8fafc;
+            border-left: 4px solid #1a5490;
+            padding: 12pt;
+            margin: 12pt 0;
+        }
+        .info-box {
+            background: #eff6ff;
+            border: 1px solid #2563eb;
+            padding: 12pt;
+            margin: 12pt 0;
+            border-radius: 4px;
+        }
+        .warning-box {
+            background: #fef3c7;
+            border: 1px solid #f59e0b;
+            padding: 12pt;
+            margin: 12pt 0;
+            border-radius: 4px;
+        }
+        .success-box {
+            background: #dcfce7;
+            border: 1px solid #16a34a;
+            padding: 12pt;
+            margin: 12pt 0;
+            border-radius: 4px;
+        }
+        code {
+            background: #f1f5f9;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Consolas', 'Courier New', monospace;
+            font-size: 10pt;
+        }
+        pre {
+            background: #1e293b;
+            color: #e2e8f0;
+            padding: 12pt;
+            border-radius: 4px;
+            overflow-x: auto;
+            font-family: 'Consolas', 'Courier New', monospace;
+            font-size: 9pt;
+            line-height: 1.4;
+        }
+        table {
+            border-collapse: collapse;
+            width: 100%;
+            margin: 12pt 0;
+        }
+        th {
+            background: #1a5490;
+            color: white;
+            padding: 8pt;
+            text-align: left;
+            border: 1px solid #cbd5e1;
+        }
+        td {
+            padding: 8pt;
+            border: 1px solid #cbd5e1;
+        }
+        tr:nth-child(even) {
+            background: #f8fafc;
+        }
+        .page-break {
+            page-break-after: always;
+        }
+        .toc {
+            background: #f8fafc;
+            padding: 16pt;
+            margin: 16pt 0;
+            border: 1px solid #cbd5e1;
+        }
+        .toc h2 {
+            margin-top: 0;
+            border: none;
+        }
+        .toc ul {
+            list-style-type: none;
+            padding-left: 0;
+        }
+        .toc li {
+            margin: 6pt 0;
+        }
+        .toc a {
+            color: #2563eb;
+            text-decoration: none;
+        }
+        .toc a:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+
+<h1>Tax Practice Application</h1>
+<h2 style="margin-top: 0; border: none;">Security & Compliance Documentation</h2>
+
+<div class="header-section">
+    <p><strong>Document Version:</strong> 1.0</p>
+    <p><strong>Date:</strong> January 2025</p>
+    <p><strong>Compliance Standards:</strong> ASIC, ATO, TPB, Australian Privacy Principles, ISO 27001</p>
+    <p><strong>Classification:</strong> Confidential - Internal Use Only</p>
+</div>
+
+<div class="info-box">
+    <h3 style="margin-top: 0;">Executive Summary</h3>
+    <p>This document outlines the comprehensive security architecture and compliance framework implemented in the Tax Practice Application. The system meets Australian regulatory standards for financial services, tax agent operations, and personal information protection.</p>
+</div>
+
+<div class="toc">
+    <h2>Table of Contents</h2>
+    <ul>
+        <li><a href="#section-1">1. Security Architecture Overview</a></li>
+        <li><a href="#section-2">2. Australian Regulatory Compliance</a></li>
+        <li><a href="#section-3">3. Data Protection Layers</a></li>
+        <li><a href="#section-4">4. Authentication & Access Control</a></li>
+        <li><a href="#section-5">5. Encryption Standards</a></li>
+        <li><a href="#section-6">6. Audit & Monitoring</a></li>
+        <li><a href="#section-7">7. Incident Response</a></li>
+        <li><a href="#section-8">8. Client Data Privacy</a></li>
+        <li><a href="#section-9">9. Compliance Verification</a></li>
+        <li><a href="#section-10">10. Technical Implementation</a></li>
+    </ul>
+</div>
+
+<div class="page-break"></div>
+
+<h2 id="section-1">1. Security Architecture Overview</h2>
+
+<p>The Tax Practice Application implements a defense-in-depth security model with multiple layers of protection:</p>
+
+<h3>1.1 Multi-Layer Security Model</h3>
+
+<table>
+    <tr>
+        <th>Layer</th>
+        <th>Protection</th>
+        <th>Implementation</th>
+    </tr>
+    <tr>
+        <td>Network Layer</td>
+        <td>Transport Security</td>
+        <td>TLS 1.3, HSTS, Certificate Pinning</td>
+    </tr>
+    <tr>
+        <td>Application Layer</td>
+        <td>Request Security</td>
+        <td>OWASP Headers, CSP, Rate Limiting</td>
+    </tr>
+    <tr>
+        <td>Authentication Layer</td>
+        <td>Identity Verification</td>
+        <td>MFA, Session Management, TPB Verification</td>
+    </tr>
+    <tr>
+        <td>Authorization Layer</td>
+        <td>Access Control</td>
+        <td>Row Level Security, RBAC, Client Assignment</td>
+    </tr>
+    <tr>
+        <td>Data Layer</td>
+        <td>Data Protection</td>
+        <td>AES-256 Encryption, TFN Protection, Secure Storage</td>
+    </tr>
+    <tr>
+        <td>Audit Layer</td>
+        <td>Monitoring</td>
+        <td>Comprehensive Logging, Breach Detection, Compliance Tracking</td>
+    </tr>
+</table>
+
+<h3>1.2 Security Principles</h3>
+
+<ul>
+    <li><strong>Zero Trust Architecture:</strong> No implicit trust - every request is authenticated and authorized</li>
+    <li><strong>Principle of Least Privilege:</strong> Users only access data they explicitly need</li>
+    <li><strong>Defense in Depth:</strong> Multiple security layers protect against single point of failure</li>
+    <li><strong>Privacy by Design:</strong> Data protection built into every feature from inception</li>
+    <li><strong>Audit Everything:</strong> Complete trail of all sensitive data access and modifications</li>
+</ul>
+
+<div class="page-break"></div>
+
+<h2 id="section-2">2. Australian Regulatory Compliance</h2>
+
+<h3>2.1 Australian Securities and Investments Commission (ASIC)</h3>
+
+<div class="success-box">
+    <h4>ASIC Cyber Resilience Compliance</h4>
+    <p>The application implements ASIC's cyber resilience framework including incident response, data breach management, and continuous security monitoring.</p>
+</div>
+
+<h4>Key ASIC Requirements Met:</h4>
+<ul>
+    <li><strong>Cyber Resilience Strategy:</strong> Documented security policies and procedures</li>
+    <li><strong>Incident Management:</strong> Automated breach detection and response workflows</li>
+    <li><strong>Third-Party Risk:</strong> Secure integration management with Supabase and Vercel</li>
+    <li><strong>Data Governance:</strong> Clear data ownership, classification, and retention policies</li>
+    <li><strong>Business Continuity:</strong> Backup procedures and disaster recovery planning</li>
+</ul>
+
+<h3>2.2 Australian Taxation Office (ATO)</h3>
+
+<h4>ATO Digital Security Obligations:</h4>
+<ul>
+    <li><strong>TFN Protection:</strong> Tax File Numbers encrypted with AES-256 and access logged</li>
+    <li><strong>Data Retention:</strong> 5-year minimum retention for tax records (configurable to 7 years)</li>
+    <li><strong>Access Control:</strong> Only verified tax agents can access client tax information</li>
+    <li><strong>Audit Trail:</strong> Complete record of all TFN access with justification required</li>
+    <li><strong>Data Integrity:</strong> Checksums and versioning prevent unauthorized modifications</li>
+    <li><strong>Secure Transmission:</strong> TLS 1.3 encryption for all data in transit</li>
+</ul>
+
+<h3>2.3 Tax Practitioners Board (TPB)</h3>
+
+<h4>TPB Code of Professional Conduct Compliance:</h4>
+<ul>
+    <li><strong>Registration Verification:</strong> Automated TPB registration number validation</li>
+    <li><strong>Professional Indemnity Insurance:</strong> Minimum $1.5M coverage tracking and verification</li>
+    <li><strong>Continuing Professional Development:</strong> CPD hours declaration and tracking</li>
+    <li><strong>Confidentiality:</strong> Strict client-agent assignment prevents unauthorized access</li>
+    <li><strong>Professional Competence:</strong> Agent qualifications and specializations recorded</li>
+    <li><strong>Client Consent:</strong> Explicit consent management for all data processing</li>
+</ul>
+
+<h3>2.4 Notifiable Data Breaches (NDB) Scheme</h3>
+
+<h4>Automated Breach Detection and Response:</h4>
+<ul>
+    <li><strong>Breach Detection:</strong> Real-time monitoring for unauthorized access patterns</li>
+    <li><strong>Severity Classification:</strong> Automatic assessment of breach impact (Low/Medium/High/Critical)</li>
+    <li><strong>30-Day Notification:</strong> Automated tracking of OAIC notification timeline</li>
+    <li><strong>Affected Individual Notification:</strong> System to notify impacted clients</li>
+    <li><strong>Remediation Tracking:</strong> Incident response workflow and resolution documentation</li>
+    <li><strong>Breach Register:</strong> Permanent record of all security incidents</li>
+</ul>
+
+<div class="page-break"></div>
+
+<h2 id="section-3">3. Data Protection Layers</h2>
+
+<h3>3.1 Row Level Security (RLS)</h3>
+
+<p>PostgreSQL Row Level Security ensures users can only access authorized data at the database level:</p>
+
+<h4>RLS Policy Framework:</h4>
+
+<table>
+    <tr>
+        <th>Table</th>
+        <th>User Type</th>
+        <th>Access Policy</th>
+    </tr>
+    <tr>
+        <td>profiles</td>
+        <td>End User</td>
+        <td>Can only SELECT/UPDATE own profile</td>
+    </tr>
+    <tr>
+        <td>profiles</td>
+        <td>Tax Agent</td>
+        <td>Can SELECT assigned client profiles only</td>
+    </tr>
+    <tr>
+        <td>questionnaire_responses</td>
+        <td>End User</td>
+        <td>Full CRUD on own responses only</td>
+    </tr>
+    <tr>
+        <td>questionnaire_responses</td>
+        <td>Tax Agent</td>
+        <td>Can SELECT/UPDATE assigned client responses</td>
+    </tr>
+    <tr>
+        <td>documents</td>
+        <td>End User</td>
+        <td>Full CRUD on own documents only</td>
+    </tr>
+    <tr>
+        <td>documents</td>
+        <td>Tax Agent</td>
+        <td>Can SELECT assigned client documents</td>
+    </tr>
+    <tr>
+        <td>audit_logs</td>
+        <td>All Users</td>
+        <td>INSERT only (append-only log)</td>
+    </tr>
+    <tr>
+        <td>audit_logs</td>
+        <td>Admin</td>
+        <td>SELECT for monitoring purposes</td>
+    </tr>
+</table>
+
+<h4>Client-Agent Assignment Control:</h4>
+<ul>
+    <li><strong>Explicit Assignment Required:</strong> Tax agents must be explicitly assigned to clients</li>
+    <li><strong>No Blanket Access:</strong> Being a tax agent doesn't grant access to all client data</li>
+    <li><strong>Assignment Audit:</strong> All client-agent assignments are logged with justification</li>
+    <li><strong>Revocable Access:</strong> Client assignments can be revoked, immediately removing access</li>
+    <li><strong>Time-Limited Access:</strong> Optional expiry dates for temporary agent access</li>
+</ul>
+
+<h3>3.2 Encryption Standards</h3>
+
+<h4>Data at Rest:</h4>
+<ul>
+    <li><strong>Database Encryption:</strong> AES-256 encryption for entire database (Supabase managed)</li>
+    <li><strong>TFN Encryption:</strong> Additional field-level encryption using pgcrypto extension</li>
+    <li><strong>Document Storage:</strong> Encrypted blob storage for uploaded documents (Vercel Blob)</li>
+    <li><strong>Backup Encryption:</strong> Automated encrypted backups with separate key management</li>
+</ul>
+
+<h4>Data in Transit:</h4>
+<ul>
+    <li><strong>TLS 1.3:</strong> Latest transport layer security for all communications</li>
+    <li><strong>Certificate Pinning:</strong> Prevents man-in-the-middle attacks</li>
+    <li><strong>HSTS Enforcement:</strong> Strict-Transport-Security header prevents downgrade attacks</li>
+    <li><strong>Secure Cookies:</strong> HttpOnly, Secure, SameSite=Strict flags on all cookies</li>
+</ul>
+
+<h4>Key Management:</h4>
+<ul>
+    <li><strong>Environment Variable Storage:</strong> Encryption keys never hardcoded</li>
+    <li><strong>Key Rotation:</strong> Automated quarterly key rotation procedures</li>
+    <li><strong>Separate Keys:</strong> Different keys for different data types (TFN, documents, sessions)</li>
+    <li><strong>Access Control:</strong> Only authorized personnel can access encryption keys</li>
+</ul>
+
+<div class="page-break"></div>
+
+<h2 id="section-4">4. Authentication & Access Control</h2>
+
+<h3>4.1 Multi-Factor Authentication (MFA)</h3>
+
+<div class="info-box">
+    <h4>MFA Requirement Policy</h4>
+    <p><strong>Tax Agents:</strong> MFA is MANDATORY for all registered tax agents</p>
+    <p><strong>End Users:</strong> MFA is STRONGLY RECOMMENDED (enforced after 3 assessments)</p>
+</div>
+
+<h4>MFA Implementation:</h4>
+<ul>
+    <li><strong>TOTP Support:</strong> Time-based One-Time Passwords (Google Authenticator, Authy compatible)</li>
+    <li><strong>Backup Codes:</strong> 10 single-use recovery codes provided during setup</li>
+    <li><strong>MFA Enrollment:</strong> Guided setup wizard with QR code scanning</li>
+    <li><strong>Device Trust:</strong> Option to remember trusted devices for 30 days</li>
+    <li><strong>MFA Recovery:</strong> Secure account recovery process for lost devices</li>
+</ul>
+
+<h3>4.2 Session Management</h3>
+
+<h4>Secure Session Controls:</h4>
+<ul>
+    <li><strong>2-Hour Timeout:</strong> Automatic session expiry for sensitive tax data access</li>
+    <li><strong>Absolute Timeout:</strong> 24-hour maximum session duration regardless of activity</li>
+    <li><strong>Concurrent Session Limit:</strong> Maximum 3 active sessions per user</li>
+    <li><strong>Device Fingerprinting:</strong> Sessions tied to specific device characteristics</li>
+    <li><strong>Session Revocation:</strong> Users can remotely terminate all sessions</li>
+    <li><strong>Activity Extension:</strong> Session extends with user activity (up to absolute timeout)</li>
+</ul>
+
+<h3>4.3 Role-Based Access Control (RBAC)</h3>
+
+<h4>User Roles and Permissions:</h4>
+
+<table>
+    <tr>
+        <th>Role</th>
+        <th>Permissions</th>
+        <th>Restrictions</th>
+    </tr>
+    <tr>
+        <td><strong>End User</strong></td>
+        <td>
+            • Create/view own assessments<br>
+            • Upload own documents<br>
+            • Export own data<br>
+            • Manage consent preferences
+        </td>
+        <td>
+            • Cannot access other users' data<br>
+            • Limited to 3 free outputs<br>
+            • Cannot access admin features
+        </td>
+    </tr>
+    <tr>
+        <td><strong>Tax Agent</strong></td>
+        <td>
+            • Access assigned clients only<br>
+            • Create assessments for clients<br>
+            • View client documents<br>
+            • Unlimited outputs<br>
+            • Override usage limits
+        </td>
+        <td>
+            • Must have valid TPB registration<br>
+            • MFA required<br>
+            • Cannot access unassigned clients<br>
+            • All actions audited
+        </td>
+    </tr>
+    <tr>
+        <td><strong>Admin</strong></td>
+        <td>
+            • Verify tax agents<br>
+            • Monitor all activity<br>
+            • Manage reference documents<br>
+            • Access audit logs<br>
+            • Handle data breaches
+        </td>
+        <td>
+            • Cannot access encrypted TFNs<br>
+            • All admin actions logged<br>
+            • Requires elevated privileges
+        </td>
+    </tr>
+</table>
+
+<h3>4.4 IP Whitelisting</h3>
+
+<h4>Network Access Controls:</h4>
+<ul>
+    <li><strong>Tax Agent IP Restriction:</strong> Optional IP whitelisting for office-based access</li>
+    <li><strong>Geographic Restrictions:</strong> Australian IP address verification for tax agents</li>
+    <li><strong>VPN Detection:</strong> Monitoring for VPN/proxy usage (flagged for review)</li>
+    <li><strong>Dynamic IP Support:</strong> CIDR range whitelisting for ISPs with dynamic IPs</li>
+    <li><strong>IP Change Alerts:</strong> Notifications when agents access from new IP addresses</li>
+</ul>
+
+<div class="page-break"></div>
+
+<h2 id="section-5">5. Encryption Standards</h2>
+
+<h3>5.1 TFN (Tax File Number) Protection</h3>
+
+<div class="warning-box">
+    <h4>Critical Security Measure</h4>
+    <p>Tax File Numbers are the most sensitive data in the system and receive maximum protection through field-level encryption, access logging, and strict authorization requirements.</p>
+</div>
+
+<h4>TFN Security Implementation:</h4>
+<pre>
+-- TFN Encryption Example
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
+
+-- Encrypt TFN before storage
+INSERT INTO profiles (tfn_encrypted)
+VALUES (pgp_sym_encrypt('123456789', current_setting('app.encryption_key')));
+
+-- Decrypt TFN (requires authorization)
+SELECT pgp_sym_decrypt(tfn_encrypted::bytea, current_setting('app.encryption_key'))
+FROM profiles
+WHERE id = auth.uid()
+AND auth.jwt()->>'role' = 'tax_agent';
+</pre>
+
+<h4>TFN Access Requirements:</h4>
+<ol>
+    <li><strong>Verified Tax Agent Status:</strong> Must have validated TPB registration</li>
+    <li><strong>Client Assignment:</strong> Must be explicitly assigned to the client</li>
+    <li><strong>MFA Verification:</strong> Recent MFA challenge required (within last hour)</li>
+    <li><strong>Access Justification:</strong> Must provide reason for TFN access</li>
+    <li><strong>Audit Logging:</strong> Every TFN access logged with full context</li>
+</ol>
+
+<h3>5.2 Document Encryption</h3>
+
+<h4>Uploaded Document Security:</h4>
+<ul>
+    <li><strong>Encrypted Storage:</strong> All documents encrypted at rest in Vercel Blob</li>
+    <li><strong>Access Tokens:</strong> Time-limited signed URLs for document access (1-hour expiry)</li>
+    <li><strong>Virus Scanning:</strong> Automated malware detection on upload</li>
+    <li><strong>File Type Validation:</strong> Whitelist of allowed file types (PDF, JPG, PNG only)</li>
+    <li><strong>Size Limits:</strong> Maximum 10MB per file, 50MB total per assessment</li>
+    <li><strong>Watermarking:</strong> Optional watermarking for sensitive documents</li>
+</ul>
+
+<h3>5.3 Database Encryption</h3>
+
+<h4>Supabase Security Features:</h4>
+<ul>
+    <li><strong>Transparent Data Encryption (TDE):</strong> Entire database encrypted with AES-256</li>
+    <li><strong>Encrypted Backups:</strong> Point-in-time recovery with encrypted snapshots</li>
+    <li><strong>Connection Encryption:</strong> SSL/TLS required for all database connections</li>
+    <li><strong>Key Management:</strong> Managed by Supabase with hardware security modules (HSMs)</li>
+</ul>
+
+<div class="page-break"></div>
+
+<h2 id="section-6">6. Audit & Monitoring</h2>
+
+<h3>6.1 Comprehensive Audit Logging</h3>
+
+<h4>Audit Log Coverage:</h4>
+
+<table>
+    <tr>
+        <th>Event Type</th>
+        <th>Logged Information</th>
+        <th>Retention</th>
+    </tr>
+    <tr>
+        <td>Authentication</td>
+        <td>Login/logout, MFA attempts, failed attempts, session creation</td>
+        <td>7 years</td>
+    </tr>
+    <tr>
+        <td>Data Access</td>
+        <td>SELECT queries, user ID, accessed records, IP address, timestamp</td>
+        <td>7 years</td>
+    </tr>
+    <tr>
+        <td>Data Modification</td>
+        <td>INSERT/UPDATE/DELETE, before/after values, justification</td>
+        <td>7 years</td>
+    </tr>
+    <tr>
+        <td>TFN Access</td>
+        <td>All TFN decryption, agent ID, client ID, reason, approval</td>
+        <td>Permanent</td>
+    </tr>
+    <tr>
+        <td>Document Access</td>
+        <td>Downloads, views, uploads, deletions, document type</td>
+        <td>7 years</td>
+    </tr>
+    <tr>
+        <td>Admin Actions</td>
+        <td>Agent verification, client assignment, usage grants, settings changes</td>
+        <td>7 years</td>
+    </tr>
+    <tr>
+        <td>Security Events</td>
+        <td>Failed logins, suspicious activity, IP changes, breaches</td>
+        <td>Permanent</td>
+    </tr>
+    <tr>
+        <td>Consent Changes</td>
+        <td>Consent granted/revoked, consent type, timestamp</td>
+        <td>7 years</td>
+    </tr>
+</table>
+
+<h4>Audit Log Integrity:</h4>
+<ul>
+    <li><strong>Append-Only:</strong> Audit logs cannot be modified or deleted (enforced by RLS)</li>
+    <li><strong>Cryptographic Checksums:</strong> Each log entry has SHA-256 hash for tamper detection</li>
+    <li><strong>Chain of Custody:</strong> Sequential log entries linked via hash chain</li>
+    <li><strong>Automated Backup:</strong> Audit logs backed up to immutable storage daily</li>
+    <li><strong>External Logging:</strong> Critical events forwarded to external SIEM system</li>
+</ul>
+
+<h3>6.2 Real-Time Monitoring</h3>
+
+<h4>Security Monitoring Dashboard:</h4>
+<ul>
+    <li><strong>Failed Login Tracking:</strong> Alert after 5 failed attempts within 15 minutes</li>
+    <li><strong>Unusual Access Patterns:</strong> Machine learning detection of anomalous behavior</li>
+    <li><strong>Geographic Anomalies:</strong> Alerts for access from unexpected locations</li>
+    <li><strong>Bulk Data Access:</strong> Flagging of excessive record queries</li>
+    <li><strong>After-Hours Activity:</strong> Monitoring for access outside business hours</li>
+    <li><strong>Privilege Escalation:</strong> Detection of unauthorized permission changes</li>
+</ul>
+
+<h3>6.3 Compliance Reporting</h3>
+
+<h4>Automated Compliance Reports:</h4>
+<ul>
+    <li><strong>Monthly Security Reports:</strong> Summary of all security events and incidents</li>
+    <li><strong>Quarterly Access Reviews:</strong> Review of all client-agent assignments</li>
+    <li><strong>Annual Compliance Certificate:</strong> Statement of compliance with APPs, ATO, TPB requirements</li>
+    <li><strong>Breach Notification Reports:</strong> Immediate reports for notifiable data breaches</li>
+    <li><strong>Audit Trail Exports:</strong> Complete audit logs available for regulator requests</li>
+</ul>
+
+<div class="page-break"></div>
+
+<h2 id="section-7">7. Incident Response</h2>
+
+<h3>7.1 Data Breach Response Workflow</h3>
+
+<div class="warning-box">
+    <h4>Notifiable Data Breach Timeline</h4>
+    <p>Under the Privacy Act 1988, organizations must notify the OAIC and affected individuals of eligible data breaches <strong>as soon as practicable</strong>, and no later than <strong>30 days</strong> after becoming aware of the breach.</p>
+</div>
+
+<h4>Automated Breach Detection:</h4>
+<ol>
+    <li><strong>Detection (0-1 hours):</strong>
+        <ul>
+            <li>Real-time monitoring detects unusual access patterns</li>
+            <li>Automated severity assessment (Low/Medium/High/Critical)</li>
+            <li>Immediate notification to security team</li>
+            <li>Incident ticket automatically created</li>
+        </ul>
+    </li>
+    <li><strong>Assessment (1-4 hours):</strong>
+        <ul>
+            <li>Security team reviews breach details and scope</li>
+            <li>Identification of affected individuals and data types</li>
+            <li>Risk assessment: likelihood of serious harm</li>
+            <li>Decision on whether breach is "eligible data breach" under NDB scheme</li>
+        </ul>
+    </li>
+    <li><strong>Containment (4-8 hours):</strong>
+        <ul>
+            <li>Isolate affected systems and revoke compromised credentials</li>
+            <li>Prevent further unauthorized access</li>
+            <li>Preserve evidence for investigation</li>
+            <li>Document all containment actions taken</li>
+        </ul>
+    </li>
+    <li><strong>Notification (within 30 days):</strong>
+        <ul>
+            <li>Notify OAIC if eligible data breach</li>
+            <li>Notify affected individuals via email/secure message</li>
+            <li>Provide recommended steps to protect themselves</li>
+            <li>Update public breach register if required</li>
+        </ul>
+    </li>
+    <li><strong>Remediation (ongoing):</strong>
+        <ul>
+            <li>Fix security vulnerabilities that allowed breach</li>
+            <li>Enhanced monitoring of affected accounts</li>
+            <li>Offer credit monitoring or identity protection services</li>
+            <li>Update security policies and procedures</li>
+        </ul>
+    </li>
+    <li><strong>Review (30-60 days):</strong>
+        <ul>
+            <li>Post-incident review and lessons learned</li>
+            <li>Update incident response procedures</li>
+            <li>Staff training on new security measures</li>
+            <li>Report to management and board</li>
+        </ul>
+    </li>
+</ol>
+
+<h3>7.2 Incident Severity Classification</h3>
+
+<table>
+    <tr>
+        <th>Severity</th>
+        <th>Criteria</th>
+        <th>Response Time</th>
+        <th>Notification</th>
+    </tr>
+    <tr>
+        <td><strong>Critical</strong></td>
+        <td>Mass TFN exposure, database compromise, ransomware</td>
+        <td>Immediate</td>
+        <td>OAIC, all affected individuals, media</td>
+    </tr>
+    <tr>
+        <td><strong>High</strong></td>
+        <td>Multiple client records accessed, admin compromise</td>
+        <td>&lt; 1 hour</td>
+        <td>OAIC, affected individuals</td>
+    </tr>
+    <tr>
+        <td><strong>Medium</strong></td>
+        <td>Single client record compromise, failed attack attempt</td>
+        <td>&lt; 4 hours</td>
+        <td>Affected individuals, internal review</td>
+    </tr>
+    <tr>
+        <td><strong>Low</strong></td>
+        <td>Suspicious activity, unsuccessful breach, minor policy violation</td>
+        <td>&lt; 24 hours</td>
+        <td>Internal logging only</td>
+    </tr>
+</table>
+
+<h3>7.3 Incident Response Team</h3>
+
+<h4>Key Roles and Responsibilities:</h4>
+<ul>
+    <li><strong>Incident Response Manager:</strong> Coordinates overall response, communicates with stakeholders</li>
+    <li><strong>Security Analyst:</strong> Performs technical investigation and forensic analysis</li>
+    <li><strong>System Administrator:</strong> Implements containment and remediation measures</li>
+    <li><strong>Legal Counsel:</strong> Advises on regulatory obligations and liability</li>
+    <li><strong>Communications Lead:</strong> Handles notifications to OAIC, clients, and media</li>
+    <li><strong>Privacy Officer:</strong> Ensures compliance with Privacy Act requirements</li>
+</ul>
+
+<div class="page-break"></div>
+
+<h2 id="section-8">8. Client Data Privacy</h2>
+
+<h3>8.1 Australian Privacy Principles (APPs) Implementation</h3>
+
+<h4>APP 1: Open and Transparent Management of Personal Information</h4>
+<ul>
+    <li><strong>Privacy Policy:</strong> Clear, accessible policy explaining data handling practices</li>
+    <li><strong>Collection Notices:</strong> Upfront notification of what data is collected and why</li>
+    <li><strong>Contact Information:</strong> Easy access to privacy officer for inquiries and complaints</li>
+    <li><strong>Regular Updates:</strong> Privacy policy reviewed and updated annually</li>
+</ul>
+
+<h4>APP 3: Collection of Solicited Personal Information</h4>
+<ul>
+    <li><strong>Consent Management System:</strong> Granular consent for data collection, processing, disclosure, marketing</li>
+    <li><strong>Purpose Limitation:</strong> Data only collected for legitimate tax assessment purposes</li>
+    <li><strong>Reasonable and Necessary:</strong> Only collect information required for service delivery</li>
+    <li><strong>Consent Tracking:</strong> Complete audit trail of consent granted/withdrawn</li>
+</ul>
+
+<h4>APP 5: Notification of Collection</h4>
+<ul>
+    <li><strong>Collection Notice:</strong> Displayed at point of data collection in questionnaire</li>
+    <li><strong>Use and Disclosure:</strong> Clear explanation of how data will be used and shared</li>
+    <li><strong>Third-Party Disclosure:</strong> Notification if data shared with ATO or other parties</li>
+    <li><strong>Rights Information:</strong> User rights to access, correct, and delete data</li>
+</ul>
+
+<h4>APP 6: Use or Disclosure of Personal Information</h4>
+<ul>
+    <li><strong>Primary Purpose Use:</strong> Data only used for tax assessment and advice</li>
+    <li><strong>Secondary Use Consent:</strong> Explicit consent required for any secondary purposes</li>
+    <li><strong>No Marketing Without Consent:</strong> Marketing communications only with opt-in consent</li>
+    <li><strong>Third-Party Restrictions:</strong> Contractual obligations on data processors (Supabase, Vercel)</li>
+</ul>
+
+<h4>APP 8: Cross-Border Disclosure</h4>
+<ul>
+    <li><strong>Australian Data Residency:</strong> All data stored in Australian data centers (Supabase Sydney region)</li>
+    <li><strong>No International Transfers:</strong> Data never transferred outside Australia without explicit consent</li>
+    <li><strong>Offshore Service Providers:</strong> Due diligence on Vercel/Supabase data handling practices</li>
+    <li><strong>Contractual Protections:</strong> Data processing agreements ensuring APP compliance</li>
+</ul>
+
+<h4>APP 11: Security of Personal Information</h4>
+<ul>
+    <li><strong>Reasonable Steps:</strong> Multi-layer security architecture (as detailed in this document)</li>
+    <li><strong>Encryption:</strong> AES-256 encryption at rest and TLS 1.3 in transit</li>
+    <li><strong>Access Controls:</strong> Row Level Security and role-based access control</li>
+    <li><strong>Data Destruction:</strong> Secure deletion procedures when data no longer needed</li>
+</ul>
+
+<h4>APP 12: Access to Personal Information</h4>
+<ul>
+    <li><strong>User Dashboard:</strong> Self-service access to all personal information</li>
+    <li><strong>Data Export:</strong> Complete data export in machine-readable format (JSON/CSV)</li>
+    <li><strong>30-Day Response:</strong> Requests for access responded to within 30 days</li>
+    <li><strong>Identity Verification:</strong> MFA verification required for data access requests</li>
+</ul>
+
+<h4>APP 13: Correction of Personal Information</h4>
+<ul>
+    <li><strong>Self-Service Correction:</strong> Users can update their own data anytime</li>
+    <li><strong>Correction Requests:</strong> Formal process for disputing data accuracy</li>
+    <li><strong>Notification of Corrections:</strong> Affected parties notified of material corrections</li>
+    <li><strong>Audit Trail:</strong> All corrections logged with before/after values</li>
+</ul>
+
+<h3>8.2 Data Retention and Deletion</h3>
+
+<h4>Retention Periods:</h4>
+<table>
+    <tr>
+        <th>Data Type</th>
+        <th>Retention Period</th>
+        <th>Reason</th>
+    </tr>
+    <tr>
+        <td>Tax Assessments</td>
+        <td>5 years (ATO minimum)</td>
+        <td>ATO record-keeping requirements</td>
+    </tr>
+    <tr>
+        <td>Supporting Documents</td>
+        <td>5 years (ATO minimum)</td>
+        <td>Evidence for tax claims</td>
+    </tr>
+    <tr>
+        <td>Audit Logs (TFN)</td>
+        <td>Permanent</td>
+        <td>Regulatory audit requirements</td>
+    </tr>
+    <tr>
+        <td>Audit Logs (General)</td>
+        <td>7 years</td>
+        <td>Best practice for legal protection</td>
+    </tr>
+    <tr>
+        <td>Session Logs</td>
+        <td>90 days</td>
+        <td>Security monitoring and investigation</td>
+    </tr>
+    <tr>
+        <td>Consent Records</td>
+        <td>7 years after withdrawal</td>
+        <td>Proof of lawful processing</td>
+    </tr>
+    <tr>
+        <td>Marketing Data</td>
+        <td>Until consent withdrawn</td>
+        <td>Consent-based processing</td>
+    </tr>
+</table>
+
+<h4>Secure Deletion Procedures:</h4>
+<ul>
+    <li><strong>30-Day Grace Period:</strong> Deletion requests processed after 30-day review period</li>
+    <li><strong>Soft Delete:</strong> Data marked for deletion but retained for grace period</li>
+    <li><strong>Hard Delete:</strong> Cryptographic erasure of data and encryption keys</li>
+    <li><strong>Backup Purging:</strong> Data removed from all backups and archives</li>
+    <li><strong>Third-Party Deletion:</strong> Vercel Blob documents permanently deleted</li>
+    <li><strong>Deletion Certificate:</strong> Confirmation provided to user upon completion</li>
+    <li><strong>Legal Hold:</strong> Deletion suspended if data subject to legal proceedings</li>
+</ul>
+
+<div class="page-break"></div>
+
+<h2 id="section-9">9. Compliance Verification</h2>
+
+<h3>9.1 TPB Registration Verification</h3>
+
+<h4>Tax Agent Verification Process:</h4>
+<ol>
+    <li><strong>Registration Number Validation:</strong>
+        <ul>
+            <li>TPB registration number format validation (8-digit numeric)</li>
+            <li>Automated lookup against TPB public register</li>
+            <li>Verification of active registration status</li>
+            <li>Confirmation of no disciplinary actions</li>
+        </ul>
+    </li>
+    <li><strong>Professional Indemnity Insurance:</strong>
+        <ul>
+            <li>Minimum $1.5M coverage requirement</li>
+            <li>Insurance certificate upload and verification</li>
+            <li>Annual renewal reminders</li>
+            <li>Suspension of access if insurance lapses</li>
+        </ul>
+    </li>
+    <li><strong>Continuing Professional Development (CPD):</strong>
+        <ul>
+            <li>Minimum CPD hours declaration (per TPB requirements)</li>
+            <li>Annual CPD compliance verification</li>
+            <li>Specialization tracking (income tax, BAS, etc.)</li>
+            <li>Training completion certificates</li>
+        </ul>
+    </li>
+    <li><strong>Code of Conduct Acknowledgment:</strong>
+        <ul>
+            <li>Annual acknowledgment of TPB Code of Professional Conduct</li>
+            <li>Specific acknowledgment of confidentiality obligations</li>
+            <li>Understanding of penalties for breaches</li>
+            <li>Agreement to comply with all security policies</li>
+        </ul>
+    </li>
+</ol>
+
+<h3>9.2 Security Compliance Monitoring</h3>
+
+<h4>Automated Compliance Checks:</h4>
+<ul>
+    <li><strong>RLS Policy Verification:</strong> Daily checks that all RLS policies are active and enforced</li>
+    <li><strong>Encryption Status:</strong> Verification that all sensitive data is encrypted</li>
+    <li><strong>Session Timeout Compliance:</strong> Monitoring that 2-hour timeout is enforced</li>
+    <li><strong>MFA Enforcement:</strong> Verification that all tax agents have MFA enabled</li>
+    <li><strong>Access Control Audit:</strong> Weekly review of client-agent assignments</li>
+    <li><strong>Log Integrity:</strong> Daily checksum verification of audit logs</li>
+    <li><strong>Backup Verification:</strong> Automated testing of backup restoration procedures</li>
+</ul>
+
+<h3>9.3 Third-Party Security Assessment</h3>
+
+<h4>Vendor Due Diligence:</h4>
+
+<table>
+    <tr>
+        <th>Vendor</th>
+        <th>Service</th>
+        <th>Security Assessment</th>
+    </tr>
+    <tr>
+        <td>Supabase</td>
+        <td>Database & Auth</td>
+        <td>
+            • SOC 2 Type II certified<br>
+            • ISO 27001 compliant<br>
+            • Australian data center option<br>
+            • Encryption at rest and in transit
+        </td>
+    </tr>
+    <tr>
+        <td>Vercel</td>
+        <td>Hosting & Blob Storage</td>
+        <td>
+            • SOC 2 Type II certified<br>
+            • ISO 27001 compliant<br>
+            • DDoS protection<br>
+            • Global CDN with encryption
+        </td>
+    </tr>
+</table>
+
+<h4>Data Processing Agreements:</h4>
+<ul>
+    <li><strong>Contractual Obligations:</strong> All vendors bound by data processing agreements</li>
+    <li><strong>Australian Law Compliance:</strong> Agreements specify compliance with Privacy Act 1988</li>
+    <li><strong>Data Residency:</strong> Contractual requirement for Australian data storage</li>
+    <li><strong>Security Standards:</strong> Vendors must maintain ISO 27001 or equivalent</li>
+    <li><strong>Breach Notification:</strong> 24-hour notification requirement for vendor breaches</li>
+    <li><strong>Audit Rights:</strong> Right to audit vendor security practices annually</li>
+</ul>
+
+<div class="page-break"></div>
+
+<h2 id="section-10">10. Technical Implementation</h2>
+
+<h3>10.1 Database Security Schema</h3>
+
+<h4>Key Security Tables:</h4>
+
+<pre>
+-- Audit Logging Table
+CREATE TABLE audit_logs (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID REFERENCES auth.users(id),
+    action TEXT NOT NULL,
+    table_name TEXT NOT NULL,
+    record_id UUID,
+    old_data JSONB,
+    new_data JSONB,
+    ip_address INET,
+    user_agent TEXT,
+    justification TEXT,
+    timestamp TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Enable RLS on audit_logs (append-only)
+ALTER TABLE audit_logs ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Users can insert audit logs"
+    ON audit_logs FOR INSERT
+    TO authenticated
+    WITH CHECK (true);
+
+CREATE POLICY "Admins can view audit logs"
+    ON audit_logs FOR SELECT
+    TO authenticated
+    USING (auth.jwt()->>'role' = 'admin');
+
+-- Client-Agent Assignment Table
+CREATE TABLE client_agent_assignments (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    client_id UUID REFERENCES profiles(id),
+    agent_id UUID REFERENCES profiles(id),
+    assigned_by UUID REFERENCES profiles(id),
+    assignment_reason TEXT NOT NULL,
+    assigned_at TIMESTAMPTZ DEFAULT NOW(),
+    expires_at TIMESTAMPTZ,
+    revoked_at TIMESTAMPTZ,
+    CONSTRAINT agent_must_be_tax_agent 
+        CHECK ((SELECT role FROM profiles WHERE id = agent_id) = 'tax_agent')
+);
+
+-- MFA Tracking Table
+CREATE TABLE user_mfa (
+    user_id UUID PRIMARY KEY REFERENCES auth.users(id),
+    mfa_enabled BOOLEAN DEFAULT false,
+    mfa_secret TEXT,
+    backup_codes TEXT[],
+    last_mfa_at TIMESTAMPTZ,
+    mfa_required BOOLEAN DEFAULT false
+);
+
+-- Data Breach Incidents Table
+CREATE TABLE data_breach_incidents (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    detected_at TIMESTAMPTZ DEFAULT NOW(),
+    severity TEXT CHECK (severity IN ('low', 'medium', 'high', 'critical')),
+    description TEXT NOT NULL,
+    affected_users UUID[],
+    affected_data_types TEXT[],
+    containment_actions TEXT[],
+    notified_oaic BOOLEAN DEFAULT false,
+    notified_oaic_at TIMESTAMPTZ,
+    notified_individuals BOOLEAN DEFAULT false,
+    resolution_status TEXT DEFAULT 'investigating',
+    resolved_at TIMESTAMPTZ
+);
+</pre>
+
+<h3>10.2 RLS Policy Examples</h3>
+
+<h4>Comprehensive RLS Implementation:</h4>
+
+<pre>
+-- Profiles Table: Users can only see own profile or assigned clients
+CREATE POLICY "Users can view own profile"
+    ON profiles FOR SELECT
+    TO authenticated
+    USING (id = auth.uid());
+
+CREATE POLICY "Tax agents can view assigned clients"
+    ON profiles FOR SELECT
+    TO authenticated
+    USING (
+        EXISTS (
+            SELECT 1 FROM client_agent_assignments caa
+            WHERE caa.client_id = profiles.id
+            AND caa.agent_id = auth.uid()
+            AND caa.revoked_at IS NULL
+            AND (caa.expires_at IS NULL OR caa.expires_at > NOW())
+        )
+    );
+
+-- Questionnaire Responses: Only owner or assigned agent
+CREATE POLICY "Users can manage own responses"
+    ON questionnaire_responses FOR ALL
+    TO authenticated
+    USING (user_id = auth.uid())
+    WITH CHECK (user_id = auth.uid());
+
+CREATE POLICY "Agents can view assigned client responses"
+    ON questionnaire_responses FOR SELECT
+    TO authenticated
+    USING (
+        EXISTS (
+            SELECT 1 FROM client_agent_assignments caa
+            WHERE caa.client_id = questionnaire_responses.user_id
+            AND caa.agent_id = auth.uid()
+            AND caa.revoked_at IS NULL
+            AND (caa.expires_at IS NULL OR caa.expires_at > NOW())
+        )
+    );
+
+-- Documents: Strict access control
+CREATE POLICY "Users can manage own documents"
+    ON documents FOR ALL
+    TO authenticated
+    USING (user_id = auth.uid())
+    WITH CHECK (user_id = auth.uid());
+
+CREATE POLICY "Agents can view assigned client documents"
+    ON documents FOR SELECT
+    TO authenticated
+    USING (
+        EXISTS (
+            SELECT 1 FROM client_agent_assignments caa
+            WHERE caa.client_id = documents.user_id
+            AND caa.agent_id = auth.uid()
+            AND caa.revoked_at IS NULL
+        )
+    );
+</pre>
+
+<h3>10.3 Middleware Security</h3>
+
+<h4>Security Headers Implementation:</h4>
+
+<pre>
+// middleware.ts - OWASP Security Headers
+export async function middleware(request: NextRequest) {
+    const response = NextResponse.next();
+
+    // OWASP Recommended Security Headers
+    response.headers.set('X-Frame-Options', 'DENY');
+    response.headers.set('X-Content-Type-Options', 'nosniff');
+    response.headers.set('X-XSS-Protection', '1; mode=block');
+    response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
+    response.headers.set('Permissions-Policy', 
+        'geolocation=(), microphone=(), camera=()');
+    
+    // Strict Transport Security (HSTS)
+    response.headers.set('Strict-Transport-Security', 
+        'max-age=63072000; includeSubDomains; preload');
+    
+    // Content Security Policy
+    response.headers.set('Content-Security-Policy', `
+        default-src 'self';
+        script-src 'self' 'unsafe-inline' 'unsafe-eval';
+        style-src 'self' 'unsafe-inline';
+        img-src 'self' data: https:;
+        font-src 'self' data:;
+        connect-src 'self' https://*.supabase.co;
+        frame-ancestors 'none';
+    `.replace(/\s+/g, ' ').trim());
+
+    // Session timeout check (2 hours)
+    const supabase = createMiddlewareClient(request, response);
+    const { data: { session } } = await supabase.auth.getSession();
+    
+    if (session) {
+        const sessionAge = Date.now() - new Date(session.created_at).getTime();
+        if (sessionAge > 2 * 60 * 60 * 1000) { // 2 hours
+            await supabase.auth.signOut();
+            return NextResponse.redirect(new URL('/auth/login', request.url));
+        }
+    }
+
+    return response;
+}
+</pre>
+
+<h3>10.4 API Security</h3>
+
+<h4>Rate Limiting and Request Validation:</h4>
+
+<pre>
+// lib/rate-limiter.ts
+import { Ratelimit } from '@upstash/ratelimit';
+import { Redis } from '@upstash/redis';
+
+const redis = new Redis({
+    url: process.env.KV_REST_API_URL,
+    token: process.env.KV_REST_API_TOKEN,
+});
+
+// Different rate limits for different endpoints
+export const authRateLimit = new Ratelimit({
+    redis,
+    limiter: Ratelimit.slidingWindow(5, '15 m'), // 5 attempts per 15 min
+});
+
+export const apiRateLimit = new Ratelimit({
+    redis,
+    limiter: Ratelimit.slidingWindow(100, '1 h'), // 100 requests per hour
+});
+
+export const documentUploadLimit = new Ratelimit({
+    redis,
+    limiter: Ratelimit.slidingWindow(10, '1 h'), // 10 uploads per hour
+});
+</pre>
+
+<div class="page-break"></div>
+
+<h2>Appendices</h2>
+
+<h3>Appendix A: Security Checklist</h3>
+
+<div class="success-box">
+    <h4>Pre-Launch Security Verification</h4>
+    <ul style="list-style-type: none; padding-left: 0;">
+        <li>☑ All RLS policies enabled and tested</li>
+        <li>☑ TFN encryption implemented and verified</li>
+        <li>☑ MFA mandatory for tax agents</li>
+        <li>☑ Session timeout (2 hours) enforced</li>
+        <li>☑ Audit logging on all sensitive tables</li>
+        <li>☑ OWASP security headers configured</li>
+        <li>☑ TLS 1.3 enforced on all connections</li>
+        <li>☑ Australian data residency confirmed</li>
+        <li>☑ TPB registration verification active</li>
+        <li>☑ Consent management system operational</li>
+        <li>☑ Data breach response plan documented</li>
+        <li>☑ Backup and recovery procedures tested</li>
+        <li>☑ Privacy policy published and accessible</li>
+        <li>☑ Third-party DPAs signed</li>
+        <li>☑ Penetration testing completed</li>
+    </ul>
+</div>
+
+<h3>Appendix B: Regulatory Contacts</h3>
+
+<table>
+    <tr>
+        <th>Regulator</th>
+        <th>Contact Information</th>
+        <th>Purpose</th>
+    </tr>
+    <tr>
+        <td><strong>Office of the Australian Information Commissioner (OAIC)</strong></td>
+        <td>
+            Phone: 1300 363 992<br>
+            Email: enquiries@oaic.gov.au<br>
+            Web: www.oaic.gov.au
+        </td>
+        <td>Data breach notifications, privacy complaints, APP guidance</td>
+    </tr>
+    <tr>
+        <td><strong>Tax Practitioners Board (TPB)</strong></td>
+        <td>
+            Phone: 1300 338 800<br>
+            Email: info@tpb.gov.au<br>
+            Web: www.tpb.gov.au
+        </td>
+        <td>Tax agent registration, code of conduct, professional standards</td>
+    </tr>
+    <tr>
+        <td><strong>Australian Taxation Office (ATO)</strong></td>
+        <td>
+            Phone: 13 28 69<br>
+            Web: www.ato.gov.au<br>
+            Tax Agent Portal
+        </td>
+        <td>Tax law compliance, record-keeping requirements, TFN handling</td>
+    </tr>
+    <tr>
+        <td><strong>Australian Securities and Investments Commission (ASIC)</strong></td>
+        <td>
+            Phone: 1300 300 630<br>
+            Email: info.asic@asic.gov.au<br>
+            Web: www.asic.gov.au
+        </td>
+        <td>Cyber resilience, financial services regulation</td>
+    </tr>
+</table>
+
+<h3>Appendix C: Glossary</h3>
+
+<table>
+    <tr>
+        <th>Term</th>
+        <th>Definition</th>
+    </tr>
+    <tr>
+        <td>AES-256</td>
+        <td>Advanced Encryption Standard with 256-bit key - industry standard encryption algorithm</td>
+    </tr>
+    <tr>
+        <td>APP</td>
+        <td>Australian Privacy Principle - 13 principles in Privacy Act 1988</td>
+    </tr>
+    <tr>
+        <td>ASIC</td>
+        <td>Australian Securities and Investments Commission - corporate regulator</td>
+    </tr>
+    <tr>
+        <td>ATO</td>
+        <td>Australian Taxation Office - federal tax authority</td>
+    </tr>
+    <tr>
+        <td>MFA</td>
+        <td>Multi-Factor Authentication - requires two or more verification methods</td>
+    </tr>
+    <tr>
+        <td>NDB</td>
+        <td>Notifiable Data Breach - breach requiring notification under Privacy Act</td>
+    </tr>
+    <tr>
+        <td>OAIC</td>
+        <td>Office of the Australian Information Commissioner - privacy regulator</td>
+    </tr>
+    <tr>
+        <td>RBAC</td>
+        <td>Role-Based Access Control - permissions based on user role</td>
+    </tr>
+    <tr>
+        <td>RLS</td>
+        <td>Row Level Security - database-level access control</td>
+    </tr>
+    <tr>
+        <td>TFN</td>
+        <td>Tax File Number - unique identifier issued by ATO</td>
+    </tr>
+    <tr>
+        <td>TLS</td>
+        <td>Transport Layer Security - protocol for encrypted communications</td>
+    </tr>
+    <tr>
+        <td>TPB</td>
+        <td>Tax Practitioners Board - regulates tax agents and BAS agents</td>
+    </tr>
+    <tr>
+        <td>TOTP</td>
+        <td>Time-based One-Time Password - MFA method using rotating codes</td>
+    </tr>
+</table>
+
+<div class="page-break"></div>
+
+<h2>Document Control</h2>
+
+<table>
+    <tr>
+        <th>Version</th>
+        <th>Date</th>
+        <th>Author</th>
+        <th>Changes</th>
+    </tr>
+    <tr>
+        <td>1.0</td>
+        <td>January 2025</td>
+        <td>v0 Security Team</td>
+        <td>Initial release - comprehensive security documentation</td>
+    </tr>
+</table>
+
+<h3>Review Schedule</h3>
+<p>This document must be reviewed and updated:</p>
+<ul>
+    <li><strong>Annually:</strong> Complete review of all security policies and procedures</li>
+    <li><strong>After Security Incidents:</strong> Update based on lessons learned</li>
+    <li><strong>Regulatory Changes:</strong> Update when APP, ATO, TPB, or ASIC requirements change</li>
+    <li><strong>Technology Changes:</strong> Update when security technologies or architecture changes</li>
+</ul>
+
+<h3>Approval</h3>
+<p><em>This document requires approval from:</em></p>
+<ul>
+    <li>Chief Information Security Officer (CISO)</li>
+    <li>Privacy Officer</li>
+    <li>Legal Counsel</li>
+    <li>Chief Technology Officer (CTO)</li>
+</ul>
+
+<div class="info-box" style="margin-top: 32pt;">
+    <h4>Document Distribution</h4>
+    <p><strong>Confidential:</strong> This document contains sensitive security information and should be distributed on a need-to-know basis only.</p>
+    <p><strong>Authorized Recipients:</strong></p>
+    <ul>
+        <li>Executive Management</li>
+        <li>Security Team Members</li>
+        <li>Development Team Leads</li>
+        <li>Privacy Officer</li>
+        <li>Legal Counsel</li>
+        <li>External Auditors (under NDA)</li>
+    </ul>
+</div>
+
+<hr style="margin: 32pt 0; border: none; border-top: 2px solid #1a5490;">
+
+<p style="text-align: center; color: #64748b; font-size: 10pt; margin-top: 24pt;">
+    <strong>Tax Practice Application - Security & Compliance Documentation</strong><br>
+    © 2025 - All Rights Reserved - Confidential Information<br>
+    For questions or concerns, contact: security@taxpractice.com.au
+</p>
+
+</body>
+</html>
