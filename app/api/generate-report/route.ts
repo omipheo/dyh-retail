@@ -38,18 +38,17 @@ async function convertDocxToPdf(docxBuffer: Buffer): Promise<Buffer> {
   // Go straight to CloudConvert or DOCX fallback
   console.log("[v0] ℹ️  Skipping docx-pdf (may cause crashes with html-pdf/PhantomJS)")
   
-  // Try CloudConvert API if configured (with 30 second timeout)
+  // Try CloudConvert API if configured (with 90 second timeout to allow for conversion time)
   if (process.env.CLOUDCONVERT_API_KEY) {
     try {
       return await withTimeout(
         convertViaCloudConvert(docxBuffer),
-        30000, // 30 second timeout for cloud conversion
+        90000, // 90 second timeout for cloud conversion (allows for 60s polling + upload/download time)
         "CloudConvert API timeout",
       )
     } catch (cloudError: any) {
       console.warn("[v0] ⚠️  CloudConvert failed:", cloudError.message)
     }
-    // console.log(process.env.CLOUDCONVERT_API_KEY)
   }
 
   // If all methods fail, throw error to trigger DOCX fallback
@@ -241,40 +240,71 @@ async function convertViaCloudConvert(docxBuffer: Buffer): Promise<Buffer> {
   let attempts = 0
   const maxAttempts = 60 // 60 seconds timeout
   const pollInterval = 1000 // 1 second between polls
+  let statusController: AbortController | null = null
+  let statusTimeoutId: NodeJS.Timeout | null = null
 
-  while (status !== "finished" && attempts < maxAttempts) {
-    await new Promise((resolve) => setTimeout(resolve, pollInterval))
-    
-    try {
-      const controller = new AbortController()
-      const timeoutId = setTimeout(() => controller.abort(), 10000) // 10 second timeout per request
+  try {
+    while (status !== "finished" && attempts < maxAttempts) {
+      await new Promise((resolve) => setTimeout(resolve, pollInterval))
       
-      const statusResponse = await fetch(`${baseUrl}/jobs/${jobId}`, {
-        headers: {
-          Authorization: `Bearer ${apiKey}`,
-        },
-        signal: controller.signal,
-      })
-      
-      clearTimeout(timeoutId)
+      try {
+        // Cleanup previous controller if it exists
+        if (statusController) {
+          statusController.abort()
+        }
+        if (statusTimeoutId) {
+          clearTimeout(statusTimeoutId)
+        }
+        
+        statusController = new AbortController()
+        statusTimeoutId = setTimeout(() => {
+          if (statusController) {
+            statusController.abort()
+          }
+        }, 10000) // 10 second timeout per request
+        
+        const statusResponse = await fetch(`${baseUrl}/jobs/${jobId}`, {
+          headers: {
+            Authorization: `Bearer ${apiKey}`,
+          },
+          signal: statusController.signal,
+        })
+        
+        if (statusTimeoutId) {
+          clearTimeout(statusTimeoutId)
+          statusTimeoutId = null
+        }
 
-      if (!statusResponse.ok) {
-        throw new Error(`CloudConvert status check failed: ${statusResponse.statusText}`)
+        if (!statusResponse.ok) {
+          throw new Error(`CloudConvert status check failed: ${statusResponse.statusText}`)
+        }
+
+        const statusData = await statusResponse.json()
+        status = statusData.data.status
+
+        if (status === "error") {
+          throw new Error(`CloudConvert conversion failed: ${statusData.data.message || "Unknown error"}`)
+        }
+
+        attempts++
+      } catch (fetchError: any) {
+        if (statusTimeoutId) {
+          clearTimeout(statusTimeoutId)
+          statusTimeoutId = null
+        }
+        if (fetchError.name === "AbortError") {
+          throw new Error("CloudConvert status check timeout")
+        }
+        throw fetchError
       }
-
-      const statusData = await statusResponse.json()
-      status = statusData.data.status
-
-      if (status === "error") {
-        throw new Error(`CloudConvert conversion failed: ${statusData.data.message || "Unknown error"}`)
-      }
-
-      attempts++
-    } catch (fetchError: any) {
-      if (fetchError.name === "AbortError") {
-        throw new Error("CloudConvert status check timeout")
-      }
-      throw fetchError
+    }
+  } finally {
+    // Cleanup
+    if (statusTimeoutId) {
+      clearTimeout(statusTimeoutId)
+    }
+    if (statusController) {
+      statusController.abort()
     }
   }
 
@@ -283,48 +313,74 @@ async function convertViaCloudConvert(docxBuffer: Buffer): Promise<Buffer> {
   }
 
   // Get the final job status to find export URL with timeout
-  const controller1 = new AbortController()
-  const timeoutId1 = setTimeout(() => controller1.abort(), 10000)
+  let controller1: AbortController | null = null
+  let timeoutId1: NodeJS.Timeout | null = null
   
-  const finalStatusResponse = await fetch(`${baseUrl}/jobs/${jobId}`, {
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-    },
-    signal: controller1.signal,
-  })
-  
-  clearTimeout(timeoutId1)
-  
-  if (!finalStatusResponse.ok) {
-    throw new Error(`CloudConvert final status check failed: ${finalStatusResponse.statusText}`)
+  try {
+    controller1 = new AbortController()
+    timeoutId1 = setTimeout(() => {
+      if (controller1) controller1.abort()
+    }, 10000)
+    
+    const finalStatusResponse = await fetch(`${baseUrl}/jobs/${jobId}`, {
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+      },
+      signal: controller1.signal,
+    })
+    
+    if (timeoutId1) {
+      clearTimeout(timeoutId1)
+      timeoutId1 = null
+    }
+    
+    if (!finalStatusResponse.ok) {
+      throw new Error(`CloudConvert final status check failed: ${finalStatusResponse.statusText}`)
+    }
+    
+    const finalStatusData = await finalStatusResponse.json()
+    const exportTask = finalStatusData.data.tasks.find((t: any) => t.operation === "export/url")
+    const exportUrl = exportTask?.result?.files?.[0]?.url
+
+    if (!exportUrl) {
+      throw new Error("CloudConvert export URL not found")
+    }
+
+    // Download the PDF with timeout
+    let controller2: AbortController | null = null
+    let timeoutId2: NodeJS.Timeout | null = null
+    
+    try {
+      controller2 = new AbortController()
+      timeoutId2 = setTimeout(() => {
+        if (controller2) controller2.abort()
+      }, 30000) // 30 second timeout for download
+      
+      const pdfResponse = await fetch(exportUrl, {
+        signal: controller2.signal,
+      })
+      
+      if (timeoutId2) {
+        clearTimeout(timeoutId2)
+        timeoutId2 = null
+      }
+      
+      if (!pdfResponse.ok) {
+        throw new Error(`CloudConvert PDF download failed: ${pdfResponse.statusText}`)
+      }
+
+      const arrayBuffer = await pdfResponse.arrayBuffer()
+      const pdfBuffer = Buffer.from(arrayBuffer)
+
+      return pdfBuffer
+    } finally {
+      if (timeoutId2) clearTimeout(timeoutId2)
+      if (controller2) controller2.abort()
+    }
+  } finally {
+    if (timeoutId1) clearTimeout(timeoutId1)
+    if (controller1) controller1.abort()
   }
-  
-  const finalStatusData = await finalStatusResponse.json()
-  const exportTask = finalStatusData.data.tasks.find((t: any) => t.operation === "export/url")
-  const exportUrl = exportTask?.result?.files?.[0]?.url
-
-  if (!exportUrl) {
-    throw new Error("CloudConvert export URL not found")
-  }
-
-  // Download the PDF with timeout
-  const controller2 = new AbortController()
-  const timeoutId2 = setTimeout(() => controller2.abort(), 30000) // 30 second timeout for download
-  
-  const pdfResponse = await fetch(exportUrl, {
-    signal: controller2.signal,
-  })
-  
-  clearTimeout(timeoutId2)
-  
-  if (!pdfResponse.ok) {
-    throw new Error(`CloudConvert PDF download failed: ${pdfResponse.statusText}`)
-  }
-
-  const arrayBuffer = await pdfResponse.arrayBuffer()
-  const pdfBuffer = Buffer.from(arrayBuffer)
-
-  return pdfBuffer
 }
 
 function cleanFragmentedPlaceholders(zip: PizZip): PizZip {

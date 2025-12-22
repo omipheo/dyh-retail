@@ -3,7 +3,7 @@
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { FileText, Download, AlertCircle } from "lucide-react"
-import { useState } from "react"
+import { useState, useRef } from "react"
 import { DEMO_CLIENTS } from "@/lib/demo-clients"
 
 const DEMO_CLIENTS_ARRAY = Object.values(DEMO_CLIENTS)
@@ -12,11 +12,23 @@ export default function FinalReportDemoPage() {
   const [isGenerating, setIsGenerating] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [selectedQuestionnaire, setSelectedQuestionnaire] = useState<string | null>(DEMO_CLIENTS_ARRAY[0].id)
+  
+  // Use refs to track and cleanup previous requests
+  const abortControllerRef = useRef<AbortController | null>(null)
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null)
 
   const handleDownloadReport = async () => {
     if (!selectedQuestionnaire) {
       setError("Please select a client to generate report")
       return
+    }
+
+    // Abort any previous request
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort()
+    }
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current)
     }
 
     setIsGenerating(true)
@@ -30,9 +42,15 @@ export default function FinalReportDemoPage() {
 
       console.log("[v0] Generating report for:", selectedClient.client_name)
 
-      // Create AbortController for timeout
+      // Create new AbortController for this request
       const controller = new AbortController()
-      const timeoutId = setTimeout(() => controller.abort(), 60000) // 60 second timeout
+      abortControllerRef.current = controller
+      
+      const timeoutId = setTimeout(() => {
+        console.log("[v0] Request timeout - aborting")
+        controller.abort()
+      }, 90000) // 90 second timeout (increased for PDF conversion)
+      timeoutRef.current = timeoutId
 
       try {
         // Call the generate-report API which reads the actual Word template
@@ -48,7 +66,11 @@ export default function FinalReportDemoPage() {
           signal: controller.signal,
         })
 
-        clearTimeout(timeoutId)
+        // Clear timeout on successful response start
+        if (timeoutRef.current) {
+          clearTimeout(timeoutRef.current)
+          timeoutRef.current = null
+        }
 
         if (!response.ok) {
           // Try to parse as JSON error first
@@ -79,12 +101,24 @@ export default function FinalReportDemoPage() {
 
         console.log(`[v0] ${isPdf ? "PDF" : "DOCX"} report downloaded successfully`)
       } finally {
-        clearTimeout(timeoutId)
+        // Cleanup
+        if (timeoutRef.current) {
+          clearTimeout(timeoutRef.current)
+          timeoutRef.current = null
+        }
+        if (abortControllerRef.current === controller) {
+          abortControllerRef.current = null
+        }
       }
     } catch (error: any) {
       console.error("[v0] Report generation error:", error)
       if (error.name === "AbortError") {
-        setError("Request timed out after 60 seconds. The server may be processing a large document. Please try again or check server logs.")
+        // Only show error if this wasn't a manual abort from a new request
+        if (abortControllerRef.current?.signal.aborted) {
+          setError("Request was cancelled. Please try again.")
+        } else {
+          setError("Request timed out after 90 seconds. The server may be processing a large document. Please try again or check server logs.")
+        }
       } else {
         setError(error.message || "File Error: Could not generate report from template")
       }
