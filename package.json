@@ -2,6 +2,9 @@
   "name": "my-v0-project",
   "version": "0.1.0",
   "private": true,
+  "engines": {
+    "node": ">=22.0.0"
+  },
   "scripts": {
     "build": "next build",
     "dev": "next dev",
@@ -48,7 +51,9 @@
     "cmdk": "1.0.4",
     "date-fns": "4.1.0",
     "docx": "^8.5.0",
+    "docx-pdf": "^0.0.1",
     "docxtemplater": "3.67.6",
+    "form-data": "^4.0.1",
     "embla-carousel-react": "8.5.1",
     "input-otp": "1.4.1",
     "lucide-react": "^0.454.0",

@@ -55,18 +55,21 @@ export default function FinalReportDemoPage() {
         }
       }
 
-      // Download the Word document
+      // Download the document (PDF or DOCX fallback)
       const blob = await response.blob()
+      const contentType = response.headers.get("Content-Type")
+      const isPdf = contentType?.includes("application/pdf")
+      const extension = isPdf ? "pdf" : "docx"
       const url = window.URL.createObjectURL(blob)
       const a = document.createElement("a")
       a.href = url
-      a.download = `${selectedClient.client_name}_Report_${new Date().toISOString().split("T")[0]}.docx`
+      a.download = `${selectedClient.client_name}_Report_${new Date().toISOString().split("T")[0]}.${extension}`
       document.body.appendChild(a)
       a.click()
       window.URL.revokeObjectURL(url)
       document.body.removeChild(a)
 
-      console.log("[v0] Word report downloaded successfully")
+      console.log(`[v0] ${isPdf ? "PDF" : "Word"} report downloaded successfully`)
     } catch (error: any) {
       console.error("[v0] Report generation error:", error)
       setError(error.message || "File Error: Could not generate report from template")
@@ -157,7 +160,7 @@ export default function FinalReportDemoPage() {
             <div className="flex gap-4">
               <Button onClick={handleDownloadReport} size="lg" className="gap-2" disabled={isGenerating}>
                 <Download className="h-4 w-4" />
-                {isGenerating ? "Processing 40-page report..." : "Download Word Report"}
+                {isGenerating ? "Generating PDF report..." : "Download PDF Report"}
               </Button>
             </div>
 

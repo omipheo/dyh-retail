@@ -60,8 +60,11 @@ export function DownloadReportButton({
       }
 
       const contentDisposition = response.headers.get("Content-Disposition")
+      const contentType = response.headers.get("Content-Type")
+      const isPdf = contentType?.includes("application/pdf")
       const filenameMatch = contentDisposition?.match(/filename="(.+)"/)
-      const filename = filenameMatch ? filenameMatch[1] : `report_${Date.now()}.docx`
+      const filename =
+        filenameMatch?.[1] || (isPdf ? `report_${Date.now()}.pdf` : `report_${Date.now()}.docx`)
 
       const url = window.URL.createObjectURL(blob)
       const a = document.createElement("a")
