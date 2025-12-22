@@ -49,6 +49,7 @@ async function convertDocxToPdf(docxBuffer: Buffer): Promise<Buffer> {
     } catch (cloudError: any) {
       console.warn("[v0] ⚠️  CloudConvert failed:", cloudError.message)
     }
+    // console.log(process.env.CLOUDCONVERT_API_KEY)
   }
 
   // If all methods fail, throw error to trigger DOCX fallback
@@ -63,12 +64,16 @@ async function convertDocxToPdf(docxBuffer: Buffer): Promise<Buffer> {
  */
 async function convertViaCloudConvert(docxBuffer: Buffer): Promise<Buffer> {
   const apiKey = process.env.CLOUDCONVERT_API_KEY
+  // const isSandbox = process.env.CLOUDCONVERT_SANDBOX === "true"
+  // const baseUrl = isSandbox ? "https://api.sandbox.cloudconvert.com/v2" : "https://api.cloudconvert.com/v2"
+  const baseUrl = "https://api.cloudconvert.com/v2"
+
   if (!apiKey) {
     throw new Error("CLOUDCONVERT_API_KEY not configured")
   }
 
   // Create a job with proper CloudConvert v2 API structure
-  const jobResponse = await fetch("https://api.cloudconvert.com/v2/jobs", {
+  const jobResponse = await fetch(`${baseUrl}/jobs`, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${apiKey}`,
@@ -94,76 +99,206 @@ async function convertViaCloudConvert(docxBuffer: Buffer): Promise<Buffer> {
   })
 
   if (!jobResponse.ok) {
-    const errorData = await jobResponse.json().catch(() => ({}))
-    throw new Error(`CloudConvert job creation failed: ${errorData.message || jobResponse.statusText}`)
+    const errorText = await jobResponse.text().catch(() => "")
+    let errorMessage = jobResponse.statusText
+    try {
+      const errorData = JSON.parse(errorText)
+      errorMessage = errorData?.message || errorMessage
+    } catch {}
+    throw new Error(`CloudConvert job creation failed: ${jobResponse.status} ${errorMessage} ${errorText}`)
   }
 
   const jobData = await jobResponse.json()
   const jobId = jobData.data.id
 
-  // Upload the file using the upload URL from the job
-  const importTask = jobData.data.tasks.find((t: any) => t.operation === "import/upload")
-  const uploadUrl = importTask?.result?.form?.url
-  const uploadFields = importTask?.result?.form?.parameters
+  // Wait for import task to be ready (status: "waiting")
+  let importTaskReady = false
+  let importTask = jobData.data.tasks.find((t: any) => t.operation === "import/upload")
+  let waitAttempts = 0
+  const maxWaitAttempts = 10
+
+  while (!importTaskReady && waitAttempts < maxWaitAttempts) {
+    await new Promise((resolve) => setTimeout(resolve, 500))
+    const statusResponse = await fetch(`${baseUrl}/jobs/${jobId}`, {
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+      },
+    })
+    const statusData = await statusResponse.json()
+    importTask = statusData.data.tasks.find((t: any) => t.operation === "import/upload")
+    
+    if (importTask?.status === "waiting" && importTask?.result?.form) {
+      importTaskReady = true
+    }
+    waitAttempts++
+  }
+
+  if (!importTaskReady || !importTask?.result?.form) {
+    throw new Error("CloudConvert import task not ready or upload form not available")
+  }
+
+  const uploadUrl = importTask.result.form.url
+  const uploadFields = importTask.result.form.parameters
 
   if (!uploadUrl || !uploadFields) {
     throw new Error("CloudConvert upload URL or fields not found")
   }
 
-  // Create form data for upload
-  const FormData = require("form-data")
-  const form = new FormData()
+  // Use form-data library for proper multipart/form-data encoding
+  const FormDataNode = require("form-data")
+  const form = new FormDataNode()
+  
+  // Add all form fields from CloudConvert
   Object.entries(uploadFields).forEach(([key, value]) => {
-    form.append(key, value as string)
+    form.append(key, String(value))
   })
-  form.append("file", docxBuffer, { filename: "document.docx", contentType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document" })
-
-  const uploadResponse = await fetch(uploadUrl, {
-    method: "POST",
-    body: form,
+  
+  // Add the file with proper metadata
+  form.append("file", docxBuffer, {
+    filename: "document.docx",
+    contentType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
   })
 
-  if (!uploadResponse.ok) {
-    throw new Error(`CloudConvert upload failed: ${uploadResponse.statusText}`)
-  }
+  // Use native Node.js http/https for form-data upload (fetch doesn't handle streams well)
+  const https = require("https")
+  const http = require("http")
+  
+  // Upload the file with timeout and proper cleanup
+  await new Promise<void>((resolve, reject) => {
+    const parsedUrl = new URL(uploadUrl)
+    const isHttps = parsedUrl.protocol === "https:"
+    const client = isHttps ? https : http
+    
+    const options = {
+      hostname: parsedUrl.hostname,
+      port: parsedUrl.port || (isHttps ? 443 : 80),
+      path: parsedUrl.pathname + parsedUrl.search,
+      method: "POST",
+      headers: form.getHeaders(),
+      timeout: 30000, // 30 second timeout
+    }
 
-  // Wait for conversion to complete
+    let isResolved = false
+    let req: any = null
+    
+    const cleanup = () => {
+      try {
+        if (req && !req.destroyed) req.destroy()
+        if (form && typeof form.destroy === "function") form.destroy()
+      } catch {}
+    }
+    
+    const safeResolve = () => {
+      if (!isResolved) {
+        isResolved = true
+        cleanup()
+        resolve()
+      }
+    }
+    
+    const safeReject = (err: any) => {
+      if (!isResolved) {
+        isResolved = true
+        cleanup()
+        reject(err)
+      }
+    }
+
+    req = client.request(options, (res: any) => {
+      let responseData = ""
+      res.on("data", (chunk: Buffer) => {
+        responseData += chunk.toString()
+      })
+      res.on("end", () => {
+        res.destroy()
+        if (res.statusCode && res.statusCode >= 200 && res.statusCode < 300) {
+          safeResolve()
+        } else {
+          safeReject(new Error(`CloudConvert upload failed: ${res.statusCode} ${res.statusMessage} ${responseData}`))
+        }
+      })
+    })
+
+    // Set timeout
+    req.setTimeout(30000, () => {
+      safeReject(new Error("CloudConvert upload timeout"))
+    })
+
+    req.on("error", (err: Error) => {
+      safeReject(new Error(`CloudConvert upload request failed: ${err.message}`))
+    })
+
+    // Handle form stream errors
+    form.on("error", (err: Error) => {
+      safeReject(new Error(`CloudConvert form stream error: ${err.message}`))
+    })
+
+    form.pipe(req)
+  })
+
+  // Wait for conversion to complete with timeout and proper cleanup
   let status = "waiting"
   let attempts = 0
   const maxAttempts = 60 // 60 seconds timeout
+  const pollInterval = 1000 // 1 second between polls
 
   while (status !== "finished" && attempts < maxAttempts) {
-    await new Promise((resolve) => setTimeout(resolve, 1000))
-    const statusResponse = await fetch(`https://api.cloudconvert.com/v2/jobs/${jobId}`, {
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-      },
-    })
+    await new Promise((resolve) => setTimeout(resolve, pollInterval))
+    
+    try {
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), 10000) // 10 second timeout per request
+      
+      const statusResponse = await fetch(`${baseUrl}/jobs/${jobId}`, {
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+        },
+        signal: controller.signal,
+      })
+      
+      clearTimeout(timeoutId)
 
-    if (!statusResponse.ok) {
-      throw new Error(`CloudConvert status check failed: ${statusResponse.statusText}`)
+      if (!statusResponse.ok) {
+        throw new Error(`CloudConvert status check failed: ${statusResponse.statusText}`)
+      }
+
+      const statusData = await statusResponse.json()
+      status = statusData.data.status
+
+      if (status === "error") {
+        throw new Error(`CloudConvert conversion failed: ${statusData.data.message || "Unknown error"}`)
+      }
+
+      attempts++
+    } catch (fetchError: any) {
+      if (fetchError.name === "AbortError") {
+        throw new Error("CloudConvert status check timeout")
+      }
+      throw fetchError
     }
-
-    const statusData = await statusResponse.json()
-    status = statusData.data.status
-
-    if (status === "error") {
-      throw new Error(`CloudConvert conversion failed: ${statusData.data.message || "Unknown error"}`)
-    }
-
-    attempts++
   }
 
   if (status !== "finished") {
     throw new Error(`CloudConvert conversion timeout after ${maxAttempts} seconds`)
   }
 
-  // Get the final job status to find export URL
-  const finalStatusResponse = await fetch(`https://api.cloudconvert.com/v2/jobs/${jobId}`, {
+  // Get the final job status to find export URL with timeout
+  const controller1 = new AbortController()
+  const timeoutId1 = setTimeout(() => controller1.abort(), 10000)
+  
+  const finalStatusResponse = await fetch(`${baseUrl}/jobs/${jobId}`, {
     headers: {
       Authorization: `Bearer ${apiKey}`,
     },
+    signal: controller1.signal,
   })
+  
+  clearTimeout(timeoutId1)
+  
+  if (!finalStatusResponse.ok) {
+    throw new Error(`CloudConvert final status check failed: ${finalStatusResponse.statusText}`)
+  }
+  
   const finalStatusData = await finalStatusResponse.json()
   const exportTask = finalStatusData.data.tasks.find((t: any) => t.operation === "export/url")
   const exportUrl = exportTask?.result?.files?.[0]?.url
@@ -172,8 +307,16 @@ async function convertViaCloudConvert(docxBuffer: Buffer): Promise<Buffer> {
     throw new Error("CloudConvert export URL not found")
   }
 
-  // Download the PDF
-  const pdfResponse = await fetch(exportUrl)
+  // Download the PDF with timeout
+  const controller2 = new AbortController()
+  const timeoutId2 = setTimeout(() => controller2.abort(), 30000) // 30 second timeout for download
+  
+  const pdfResponse = await fetch(exportUrl, {
+    signal: controller2.signal,
+  })
+  
+  clearTimeout(timeoutId2)
+  
   if (!pdfResponse.ok) {
     throw new Error(`CloudConvert PDF download failed: ${pdfResponse.statusText}`)
   }
@@ -208,7 +351,7 @@ function cleanFragmentedPlaceholders(zip: PizZip): PizZip {
   // Pattern 1: <w:t>{{</w:t>...<w:t>PLACEHOLDER_NAME}}</w:t>
   const splitOpeningPattern = /<w:t[^>]*>\{\{<\/w:t>(?:<[^>]+>)*<w:t[^>]*>([A-Z_]+)\}\}<\/w:t>/g
   xmlContent = xmlContent.replace(splitOpeningPattern, (match, placeholder) => {
-    totalReplacements++
+      totalReplacements++
     const cleaned = `<w:t>{{${placeholder}}}</w:t>`
     if (totalReplacements <= 10) {
       console.log(`[v0] 🔧 Fixed split opening: {{${placeholder}}}`)
