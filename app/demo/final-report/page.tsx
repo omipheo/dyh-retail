@@ -28,51 +28,66 @@ export default function FinalReportDemoPage() {
         throw new Error("Client not found")
       }
 
-      console.log("[v0] Generating Word report for:", selectedClient.client_name)
+      console.log("[v0] Generating report for:", selectedClient.client_name)
 
-      // Call the generate-report API which reads the actual Word template
-      const response = await fetch("/api/generate-report", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          questionnaire1: selectedClient,
-          questionnaire2: {}, // Empty second questionnaire for demo
-        }),
-      })
+      // Create AbortController for timeout
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), 60000) // 60 second timeout
 
-      if (!response.ok) {
-        // Try to parse as JSON error first
-        const contentType = response.headers.get("content-type")
-        if (contentType && contentType.includes("application/json")) {
-          const errorData = await response.json()
-          throw new Error(errorData.error || errorData.details || "Failed to generate report")
-        } else {
-          // Plain text error
-          const errorText = await response.text()
-          throw new Error(errorText || "Failed to generate report")
+      try {
+        // Call the generate-report API which reads the actual Word template
+        const response = await fetch("/api/generate-report", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            questionnaire1: selectedClient,
+            questionnaire2: {}, // Empty second questionnaire for demo
+          }),
+          signal: controller.signal,
+        })
+
+        clearTimeout(timeoutId)
+
+        if (!response.ok) {
+          // Try to parse as JSON error first
+          const contentType = response.headers.get("content-type")
+          if (contentType && contentType.includes("application/json")) {
+            const errorData = await response.json()
+            throw new Error(errorData.error || errorData.details || "Failed to generate report")
+          } else {
+            // Plain text error
+            const errorText = await response.text()
+            throw new Error(errorText || "Failed to generate report")
+          }
         }
+
+        // Download the document (PDF or DOCX fallback)
+        const blob = await response.blob()
+        const contentType = response.headers.get("Content-Type")
+        const isPdf = contentType?.includes("application/pdf")
+        const extension = isPdf ? "pdf" : "docx"
+        const url = window.URL.createObjectURL(blob)
+        const a = document.createElement("a")
+        a.href = url
+        a.download = `${selectedClient.client_name}_Report_${new Date().toISOString().split("T")[0]}.${extension}`
+        document.body.appendChild(a)
+        a.click()
+        window.URL.revokeObjectURL(url)
+        document.body.removeChild(a)
+
+        console.log(`[v0] ${isPdf ? "PDF" : "DOCX"} report downloaded successfully`)
+      } finally {
+        clearTimeout(timeoutId)
       }
-
-      // Download the document (PDF or DOCX fallback)
-      const blob = await response.blob()
-      const contentType = response.headers.get("Content-Type")
-      const isPdf = contentType?.includes("application/pdf")
-      const extension = isPdf ? "pdf" : "docx"
-      const url = window.URL.createObjectURL(blob)
-      const a = document.createElement("a")
-      a.href = url
-      a.download = `${selectedClient.client_name}_Report_${new Date().toISOString().split("T")[0]}.${extension}`
-      document.body.appendChild(a)
-      a.click()
-      window.URL.revokeObjectURL(url)
-      document.body.removeChild(a)
-
-      console.log(`[v0] ${isPdf ? "PDF" : "Word"} report downloaded successfully`)
     } catch (error: any) {
       console.error("[v0] Report generation error:", error)
-      setError(error.message || "File Error: Could not generate report from template")
+      if (error.name === "AbortError") {
+        setError("Request timed out after 60 seconds. The server may be processing a large document. Please try again or check server logs.")
+      } else {
+        setError(error.message || "File Error: Could not generate report from template")
+      }
     } finally {
       setIsGenerating(false)
     }

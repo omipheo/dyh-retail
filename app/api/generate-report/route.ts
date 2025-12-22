@@ -5,20 +5,16 @@ import { readFileSync, writeFileSync, unlinkSync } from "fs"
 import { join } from "path"
 import { tmpdir } from "os"
 
-// Try final_report.docx first, fallback to word_corrected.docx
-const TEMPLATE_PATH_FINAL = join(process.cwd(), "public", "templates", "final_report.docx")
-const TEMPLATE_PATH_FALLBACK = join(process.cwd(), "public", "templates", "word_corrected.docx")
+// Use the final_report.docx template (required)
+const TEMPLATE_PATH = join(process.cwd(), "public", "templates", "final_report.docx")
 
 function getTemplatePath(): string {
   const fs = require("fs")
-  if (fs.existsSync(TEMPLATE_PATH_FINAL)) {
-    return TEMPLATE_PATH_FINAL
-  }
-  return TEMPLATE_PATH_FALLBACK
+  return TEMPLATE_PATH
 }
 
 /**
- * Convert DOCX buffer to PDF buffer
+ * Convert DOCX buffer to PDF buffer with timeout
  * For Vercel serverless, we'll try multiple approaches:
  * 1. Use docx-pdf if LibreOffice is available (local dev or Docker)
  * 2. Use a cloud conversion service if configured
@@ -28,66 +24,37 @@ async function convertDocxToPdf(docxBuffer: Buffer): Promise<Buffer> {
   const fs = require("fs")
   const path = require("path")
 
-  // Try using docx-pdf library (requires LibreOffice)
-  try {
-    // Dynamic import to avoid errors if library is not installed
-    const docxPdf = require("docx-pdf")
-    const tmpDocx = path.join(tmpdir(), `temp_${Date.now()}_${Math.random().toString(36).substring(7)}.docx`)
-    const tmpPdf = path.join(tmpdir(), `temp_${Date.now()}_${Math.random().toString(36).substring(7)}.pdf`)
-
-    try {
-      writeFileSync(tmpDocx, docxBuffer)
-      console.log("[v0] 📝 Temporary DOCX created:", tmpDocx)
-
-      await new Promise<void>((resolve, reject) => {
-        docxPdf(tmpDocx, tmpPdf, (err: Error | null) => {
-          if (err) {
-            console.error("[v0] ❌ docx-pdf conversion error:", err)
-            reject(err)
-          } else {
-            resolve()
-          }
-        })
-      })
-
-      const pdfBuffer = readFileSync(tmpPdf)
-      console.log("[v0] ✅ PDF generated successfully")
-
-      // Cleanup
-      try {
-        unlinkSync(tmpDocx)
-        unlinkSync(tmpPdf)
-      } catch (cleanupErr) {
-        console.warn("[v0] ⚠️  Cleanup warning:", cleanupErr)
-      }
-
-      return pdfBuffer
-    } catch (fileError: any) {
-      // Cleanup on error
-      try {
-        if (fs.existsSync(tmpDocx)) unlinkSync(tmpDocx)
-        if (fs.existsSync(tmpPdf)) unlinkSync(tmpPdf)
-      } catch {}
-      throw fileError
-    }
-  } catch (error: any) {
-    // If docx-pdf is not available or LibreOffice is not installed, try alternative
-    console.warn("[v0] ⚠️  docx-pdf not available, trying alternative methods...")
-
-    // Option: Use CloudConvert API if configured
-    if (process.env.CLOUDCONVERT_API_KEY) {
-      try {
-        return await convertViaCloudConvert(docxBuffer)
-      } catch (cloudError: any) {
-        console.warn("[v0] ⚠️  CloudConvert failed:", cloudError.message)
-      }
-    }
-
-    // If all methods fail, throw error to trigger DOCX fallback
-    throw new Error(
-      `PDF conversion failed: ${error.message}. Install LibreOffice and docx-pdf package, or configure CLOUDCONVERT_API_KEY for cloud conversion.`,
-    )
+  // Add timeout wrapper
+  const withTimeout = async <T>(promise: Promise<T>, timeoutMs: number, errorMessage: string): Promise<T> => {
+    return Promise.race([
+      promise,
+      new Promise<T>((_, reject) =>
+        setTimeout(() => reject(new Error(`${errorMessage} (timeout after ${timeoutMs}ms)`)), timeoutMs),
+      ),
+    ])
   }
+
+  // Skip docx-pdf entirely - it tries to use html-pdf/PhantomJS which crashes the server
+  // Go straight to CloudConvert or DOCX fallback
+  console.log("[v0] ℹ️  Skipping docx-pdf (may cause crashes with html-pdf/PhantomJS)")
+  
+  // Try CloudConvert API if configured (with 30 second timeout)
+  if (process.env.CLOUDCONVERT_API_KEY) {
+    try {
+      return await withTimeout(
+        convertViaCloudConvert(docxBuffer),
+        30000, // 30 second timeout for cloud conversion
+        "CloudConvert API timeout",
+      )
+    } catch (cloudError: any) {
+      console.warn("[v0] ⚠️  CloudConvert failed:", cloudError.message)
+    }
+  }
+
+  // If all methods fail, throw error to trigger DOCX fallback
+  throw new Error(
+    `PDF conversion not available. LibreOffice not installed or CloudConvert not configured. Falling back to DOCX.`,
+  )
 }
 
 /**
@@ -218,7 +185,7 @@ async function convertViaCloudConvert(docxBuffer: Buffer): Promise<Buffer> {
 }
 
 function cleanFragmentedPlaceholders(zip: PizZip): PizZip {
-  console.log("[v0] 🧹 Starting comprehensive XML placeholder healing...")
+  console.log("[v0] 🧹 Starting conservative XML placeholder healing...")
 
   const documentXml = zip.files["word/document.xml"]
   if (!documentXml) {
@@ -229,78 +196,61 @@ function cleanFragmentedPlaceholders(zip: PizZip): PizZip {
   let xmlContent = documentXml.asText()
   console.log("[v0] 📄 Original XML length:", xmlContent.length)
 
-  // Count placeholders before cleaning
-  const beforeMatches = xmlContent.match(/\{[^{}]*\}/g) || []
+  // Count placeholders before cleaning (using double braces {{ }})
+  const beforeMatches = xmlContent.match(/\{\{[^{}]*\}\}/g) || []
   console.log("[v0] 📊 Placeholders before cleaning:", beforeMatches.length)
 
   let totalReplacements = 0
 
-  // Strategy: Find all text between { and }, remove ALL internal XML tags
-  // This regex finds { followed by any characters and XML tags, ending with }
-  const comprehensivePattern = /\{([^{}]*(?:<[^>]+>[^{}]*)*)\}/g
-
-  xmlContent = xmlContent.replace(comprehensivePattern, (match) => {
-    // Check if this match contains XML tags
-    if (match.includes("<")) {
-      totalReplacements++
-
-      // Extract just the text content, removing all XML tags
-      // Match opening brace
-      let cleaned = match.replace(/\{/, "{")
-
-      // Remove all XML tags between the braces: </w:t>, <w:r>, <w:t>, etc.
-      cleaned = cleaned.replace(/<\/w:t>/g, "")
-      cleaned = cleaned.replace(/<w:r[^>]*>/g, "")
-      cleaned = cleaned.replace(/<w:t[^>]*>/g, "")
-      cleaned = cleaned.replace(/<w:rPr[^>]*>/g, "")
-      cleaned = cleaned.replace(/<\/w:rPr>/g, "")
-      cleaned = cleaned.replace(/<\/w:r>/g, "")
-      cleaned = cleaned.replace(/<w:rFonts[^>]*\/>/g, "")
-      cleaned = cleaned.replace(/<w:b[^>]*\/>/g, "")
-      cleaned = cleaned.replace(/<w:bCs[^>]*\/>/g, "")
-      cleaned = cleaned.replace(/<w:i[^>]*\/>/g, "")
-      cleaned = cleaned.replace(/<w:color[^>]*\/>/g, "")
-      cleaned = cleaned.replace(/<w:sz[^>]*\/>/g, "")
-      cleaned = cleaned.replace(/<w:szCs[^>]*\/>/g, "")
-      cleaned = cleaned.replace(/<w:u[^>]*\/>/g, "")
-
-      // Log the transformation for first 20 replacements
-      if (totalReplacements <= 20) {
-        console.log(`[v0] 🔧 Healed placeholder ${totalReplacements}:`)
-        console.log(`     FROM: ${match.substring(0, 80)}${match.length > 80 ? "..." : ""}`)
-        console.log(`     TO:   ${cleaned}`)
-      }
-
-      return cleaned
+  // Conservative approach: Only fix placeholders that are split across <w:t> tags
+  // Template uses {{ }} delimiters, so we need to fix double braces
+  
+  // Pattern 1: <w:t>{{</w:t>...<w:t>PLACEHOLDER_NAME}}</w:t>
+  const splitOpeningPattern = /<w:t[^>]*>\{\{<\/w:t>(?:<[^>]+>)*<w:t[^>]*>([A-Z_]+)\}\}<\/w:t>/g
+  xmlContent = xmlContent.replace(splitOpeningPattern, (match, placeholder) => {
+    totalReplacements++
+    const cleaned = `<w:t>{{${placeholder}}}</w:t>`
+    if (totalReplacements <= 10) {
+      console.log(`[v0] 🔧 Fixed split opening: {{${placeholder}}}`)
     }
-    return match
+    return cleaned
   })
 
-  // Additional pass: handle any remaining split braces
-  // Pattern: <w:t>{</w:t> ... <w:t>CONTENT}</w:t>
-  const splitOpeningBrace = /<w:t[^>]*>\{<\/w:t>(?:<[^>]+>)*<w:t[^>]*>([^<]+)\}/g
-  xmlContent = xmlContent.replace(splitOpeningBrace, (match, content) => {
+  // Pattern 2: <w:t>{{PLACEHOLDER_NAME</w:t>...<w:t>}}</w:t>
+  const splitClosingPattern = /<w:t[^>]*>\{\{([A-Z_]+)<\/w:t>(?:<[^>]+>)*<w:t[^>]*>\}\}<\/w:t>/g
+  xmlContent = xmlContent.replace(splitClosingPattern, (match, placeholder) => {
     totalReplacements++
-    const cleaned = `{${content}}`
-    if (totalReplacements <= 20) {
-      console.log(`[v0] 🔧 Fixed split opening brace: ${cleaned}`)
+    const cleaned = `<w:t>{{${placeholder}}}</w:t>`
+    if (totalReplacements <= 10) {
+      console.log(`[v0] 🔧 Fixed split closing: {{${placeholder}}}`)
     }
-    return `<w:t>${cleaned}</w:t>`
+    return cleaned
   })
 
-  // Pattern: {CONTENT<w:t>}</w:t>
-  const splitClosingBrace = /\{([^<]+)<\/w:t>(?:<[^>]+>)*<w:t[^>]*>\}/g
-  xmlContent = xmlContent.replace(splitClosingBrace, (match, content) => {
+  // Pattern 3: More complex splits - {{PLACEHOLDER</w:t>...<w:t>_NAME}}
+  const complexSplitPattern = /<w:t[^>]*>\{\{([A-Z_]*?)<\/w:t>(?:<[^>]+>)*<w:t[^>]*>([A-Z_]+)\}\}<\/w:t>/g
+  xmlContent = xmlContent.replace(complexSplitPattern, (match, part1, part2) => {
     totalReplacements++
-    const cleaned = `{${content}}`
-    if (totalReplacements <= 20) {
-      console.log(`[v0] 🔧 Fixed split closing brace: ${cleaned}`)
+    const cleaned = `<w:t>{{${part1}${part2}}}</w:t>`
+    if (totalReplacements <= 10) {
+      console.log(`[v0] 🔧 Fixed complex split: {{${part1}${part2}}}`)
     }
-    return `<w:t>${cleaned}</w:t>`
+    return cleaned
+  })
+
+  // Pattern 4: Handle cases where {{ is split: <w:t>{{</w:t><w:t>PLACEHOLDER</w:t><w:t>}}</w:t>
+  const splitBothPattern = /<w:t[^>]*>\{\{<\/w:t>(?:<[^>]+>)*<w:t[^>]*>([A-Z_]+)<\/w:t>(?:<[^>]+>)*<w:t[^>]*>\}\}<\/w:t>/g
+  xmlContent = xmlContent.replace(splitBothPattern, (match, placeholder) => {
+    totalReplacements++
+    const cleaned = `<w:t>{{${placeholder}}}</w:t>`
+    if (totalReplacements <= 10) {
+      console.log(`[v0] 🔧 Fixed split both sides: {{${placeholder}}}`)
+    }
+    return cleaned
   })
 
   // Count placeholders after cleaning
-  const afterMatches = xmlContent.match(/\{[^{}]*\}/g) || []
+  const afterMatches = xmlContent.match(/\{\{[^{}]*\}\}/g) || []
   console.log("[v0] 📊 Placeholders after cleaning:", afterMatches.length)
   console.log("[v0] ✅ Total XML fragments healed:", totalReplacements)
   console.log("[v0] 📄 Cleaned XML length:", xmlContent.length)
@@ -597,24 +547,47 @@ export async function POST(request: NextRequest) {
     const zip = new PizZip(templateBuffer)
     console.log("[v0] ✅ PizZip created successfully")
 
-    console.log("[v0] 🧹 Cleaning fragmented XML placeholders...")
-    const cleanedZip = cleanFragmentedPlaceholders(zip)
-    console.log("[v0] ✅ XML cleaning complete")
-
     console.log("[v0] 🔧 Mapping questionnaire data...")
     const questionnaireData = mapQuestionnairesToTemplateData(questionnaire1, questionnaire2)
     console.log("[v0] ✅ Data mapping complete, fields:", Object.keys(questionnaireData).length)
 
     console.log("[v0] 📝 Initializing Docxtemplater...")
-    const doc = new Docxtemplater(cleanedZip, {
+    let doc: Docxtemplater
+    let useCleanedZip = false
+
+    // Template uses {{ }} delimiters (double braces), not single braces
+    const docxtemplaterOptions = {
       paragraphLoop: true,
       linebreaks: true,
+      delimiters: {
+        start: "{{",
+        end: "}}",
+      },
       nullGetter: (part: any) => {
         console.log("[v0] ⚠️  Missing placeholder:", part.value)
         return ""
       },
-    })
-    console.log("[v0] ✅ Docxtemplater initialized")
+    }
+
+    try {
+      // Try without cleaning first - docxtemplater can handle most cases
+      doc = new Docxtemplater(zip, docxtemplaterOptions)
+      console.log("[v0] ✅ Docxtemplater initialized without cleaning")
+    } catch (initError: any) {
+      // If initialization fails, try with cleaned XML
+      if (initError.message?.includes("Malformed xml") || initError.message?.includes("xml") || initError.message?.includes("Duplicate")) {
+        console.log("[v0] ⚠️  Initial initialization failed, trying with XML cleaning...")
+        console.log("[v0] 🧹 Cleaning fragmented XML placeholders...")
+        const cleanedZip = cleanFragmentedPlaceholders(zip)
+        console.log("[v0] ✅ XML cleaning complete")
+        useCleanedZip = true
+
+        doc = new Docxtemplater(cleanedZip, docxtemplaterOptions)
+        console.log("[v0] ✅ Docxtemplater initialized with cleaned XML")
+      } else {
+        throw initError
+      }
+    }
 
     console.log("[v0] 🎨 Rendering document with data...")
     doc.render(questionnaireData)
@@ -627,24 +600,32 @@ export async function POST(request: NextRequest) {
     })
     console.log("[v0] ✅ DOCX buffer generated, size:", docxBuffer.length, "bytes")
 
-    // Convert DOCX to PDF
-    console.log("[v0] 🔄 Converting DOCX to PDF...")
+    // Convert DOCX to PDF (with fast fallback to DOCX)
+    console.log("[v0] 🔄 Attempting PDF conversion (will fallback to DOCX if unavailable)...")
     let pdfBuffer: Buffer
     let filename: string
     let contentType: string
 
     try {
       // Try to convert to PDF using docx-pdf or alternative method
-      pdfBuffer = await convertDocxToPdf(docxBuffer)
+      // This will timeout quickly if LibreOffice is not available
+      // Wrap in Promise to catch any unhandled errors
+      pdfBuffer = await Promise.resolve(convertDocxToPdf(docxBuffer)).catch((err: any) => {
+        console.log("[v0] ⚠️  PDF conversion error caught:", err.message || String(err))
+        throw err
+      })
       filename = `Tax_Report_${clientName || "Client"}_${new Date().toISOString().split("T")[0]}.pdf`
       contentType = "application/pdf"
       console.log("[v0] ✅ PDF conversion successful, size:", pdfBuffer.length, "bytes")
     } catch (pdfError: any) {
-      console.warn("[v0] ⚠️  PDF conversion failed, falling back to DOCX:", pdfError.message)
-      // Fallback to DOCX if PDF conversion fails
+      // Catch any error (including unhandled assertion errors) and fallback to DOCX
+      const errorMsg = pdfError?.message || pdfError?.toString() || "Unknown error"
+      console.log("[v0] ℹ️  PDF conversion not available, using DOCX format:", errorMsg)
+      // Fallback to DOCX immediately - this is faster and works everywhere
       pdfBuffer = docxBuffer
       filename = `Tax_Report_${clientName || "Client"}_${new Date().toISOString().split("T")[0]}.docx`
       contentType = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+      console.log("[v0] ✅ DOCX file ready, size:", pdfBuffer.length, "bytes")
     }
 
     console.log("[v0] ✨ Report generation complete! File:", filename)
