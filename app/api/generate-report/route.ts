@@ -539,10 +539,52 @@ function mapQuestionnairesToTemplateData(questionnaire1: any, questionnaire2?: a
     return `${line1},\n${restFormatted}`
   }
 
-  const totalHours =
-    merged.hours_per_week && merged.weeks_per_year
-      ? (toNumber(merged.hours_per_week) * toNumber(merged.weeks_per_year)).toString()
+  const hoursPerWeek = toNumber(
+    merged.hours_per_week ||
+      merged.HOURS_PER_WEEK ||
+      merged.office_hours_per_week ||
+      merged.OFFICE_HOURS_PER_WEEK ||
+      (typeof merged.ss_q48_time === "string" ? merged.ss_q48_time.match(/\d+/)?.[0] : undefined),
+  )
+  const weeksPerYear = toNumber(merged.weeks_per_year || merged.WEEKS_PER_YEAR || 50)
+
+  // Accept incoming total hours if provided by template data (e.g., scenario fixtures)
+  const totalHoursProvided = toNumber(
+    merged.total_hours ||
+      merged.TOTAL_HOURS ||
+      merged.total_hours_worked ||
+      merged.TOTAL_HOURS_WORKED ||
+      merged.total_number_of_hours_worked ||
+      merged.TOTAL_NUMBER_OF_HOURS_WORKED ||
+      merged.HOURS_PER_YEAR,
+  )
+
+  const totalHoursNum =
+    totalHoursProvided > 0
+      ? totalHoursProvided
+      : hoursPerWeek && weeksPerYear
+        ? hoursPerWeek * weeksPerYear
+        : 0
+
+  const totalHours = totalHoursNum ? totalHoursNum.toString() : ""
+
+  // Fixed rate method (ATO rate $0.70/hour as per template)
+  const FIXED_RATE_PER_HOUR = 0.7
+  const fixedRateDeductionNumBase = totalHoursNum ? totalHoursNum * FIXED_RATE_PER_HOUR : 0
+  const fixedRateDeductionNum = fixedRateDeductionNumBase || toNumber(merged.DEDUCTION_FIXED_RATE || merged.FIXED_RATE_DEDUCTION)
+  const fixedRateDeductionSentence =
+    totalHoursNum && fixedRateDeductionNum
+      ? `${totalHoursNum} hours × $0.70 = $${Math.round(fixedRateDeductionNum)}`
       : ""
+  const bupPercentageNum = toNumber(merged.bup_percentage || merged.business_use_percentage || merged.BUP || 0)
+  const runningExpensesBase = toNumber(
+    merged.total_running_expenses || merged.running_expenses || merged.RUNNING_EXPENSES || 0,
+  )
+  const runningCostsDeductibleActual = toNumber(
+    merged.total_running_costs_deductible ||
+      merged.running_costs_deductible ||
+      (runningExpensesBase && bupPercentageNum ? runningExpensesBase * (bupPercentageNum / 100) : 0),
+  )
 
   const reportDate = formatDateAU(
     merged.report_date ||
@@ -568,6 +610,26 @@ function mapQuestionnairesToTemplateData(questionnaire1: any, questionnaire2?: a
     CLIENT_BUSINESS_TYPE: merged.business_type || merged.CLIENT_BUSINESS_TYPE || merged.legal_structure || "",
     CLIENT_ABN: merged.abn || merged.CLIENT_ABN || "",
     CLIENT_BUSINESS_START_DATE: formatDateAU(merged.business_start_date || merged.CLIENT_BUSINESS_START_DATE || ""),
+
+    // Fixed rate method display fields
+    FIXED_RATE_HOURS_PER_WEEK: hoursPerWeek ? hoursPerWeek.toString() : "",
+    FIXED_RATE_WEEKS_PER_YEAR: weeksPerYear ? weeksPerYear.toString() : "",
+    FIXED_RATE_TOTAL_HOURS: totalHours,
+    HOURS_PER_YEAR: totalHours,
+    FIXED_RATE_HOURLY_RATE: "$0.70",
+    FIXED_RATE_DEDUCTION: formatCurrency(fixedRateDeductionNum) || "",
+    FIXED_RATE_METHOD_DEDUCTION: formatCurrency(fixedRateDeductionNum) || "",
+    RUNNING_COSTS_DEDUCTION_FIXED: formatCurrency(fixedRateDeductionNum) || "",
+    RUNNING_COSTS_DEDUCTION: formatCurrency(fixedRateDeductionNum) || "",
+    RUNNING_COSTS_DEDUCTION_FIXED_METHOD: formatCurrency(fixedRateDeductionNum) || "",
+    DEDUCTION_FIXED_RATE: formatCurrency(fixedRateDeductionNum) || "",
+    DEDUCTION_FIXED_METHOD: formatCurrency(fixedRateDeductionNum) || "",
+    DEDUCTION_RESULT: formatCurrency(fixedRateDeductionNum) || "",
+    FIXED_RATE_DEDUCTION_DISPLAY: formatCurrency(fixedRateDeductionNum) || "",
+    "DEDUCTION FIXED RATE": formatCurrency(fixedRateDeductionNum) || "",
+    "DEDUCTION FIXED METHOD": formatCurrency(fixedRateDeductionNum) || "",
+    FIXED_RATE_DEDUCTION_SENTENCE: fixedRateDeductionSentence || "",
+    DEDUCTION_SENTENCE: fixedRateDeductionSentence || "",
 
     // Financial Data - Quick Questionnaire
     TAXABLE_INCOME: formatCurrency(merged.taxable_income || merged.q2_annual_income || merged.annual_income) || "",
@@ -802,12 +864,18 @@ function mapQuestionnairesToTemplateData(questionnaire1: any, questionnaire2?: a
     TOTAL_BUSINESS_USE_FLOOR_AREA: merged.total_business_use_floor_area || merged.business_floor_space_sqm || "",
     BUSINESS_USE_PERCENTAGE: merged.bup_percentage?.toString() || "",
     TOTAL_RUNNING_COSTS_DEDUCTIBLE: merged.total_running_costs_deductible || "",
+    ACTUAL_COST_METHOD_DEDUCTION: formatCurrency(runningCostsDeductibleActual) || "",
+    RUNNING_COSTS_DEDUCTION_ACTUAL: formatCurrency(runningCostsDeductibleActual) || "",
+    ACTUAL_COST_METHOD_DEDUCTION_DISPLAY: formatCurrency(runningCostsDeductibleActual) || "",
+    RUNNING_COSTS_DEDUCTION_ACTUAL_METHOD: formatCurrency(runningCostsDeductibleActual) || "",
     TOTAL_WEEKLY_HOURS_WORKED: merged.hours_per_week?.toString() || "",
     TOTAL_NUMBER_OF_WEEKS_WORKED: merged.weeks_per_year?.toString() || "52",
     TOTAL_NUMBER_OF_HOURS_WORKED: totalHours,
-    TOTAL_FIXED_RATE_METHOD_CLAIM: merged.total_fixed_rate_method_claim || "",
-    "TOTAL_CLAIM_ PER_ THE_RUNNING_COST_METHOD": merged.total_claim_per_running_cost_method || "",
-    "TOTAL_CLAIM_ PER_ THE_FIXED_COST_METHOD": merged.total_claim_per_fixed_cost_method || "",
+    TOTAL_FIXED_RATE_METHOD_CLAIM: formatCurrency(
+      merged.total_fixed_rate_method_claim || merged.TOTAL_FIXED_RATE_METHOD_CLAIM || fixedRateDeductionNum,
+    ) || "",
+    "TOTAL_CLAIM_ PER_ THE_RUNNING_COST_METHOD": merged.total_claim_per_running_cost_method || merged.TOTAL_CLAIM_PER_RUNNING_COST_METHOD || "",
+    "TOTAL_CLAIM_ PER_ THE_FIXED_COST_METHOD": merged.total_claim_per_fixed_cost_method || merged.TOTAL_CLAIM_PER_FIXED_COST_METHOD || "",
     BEST_METHOD_COMPARISON: merged.best_method_comparison || "",
     RECOMMENDED_METHOD: merged.recommended_method || merged.strategy_name || merged.strategy || "",
     TOTAL_PROPERTY_DEDUCTIBLE: merged.total_property_deductible || "",
