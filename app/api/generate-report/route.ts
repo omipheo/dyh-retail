@@ -479,33 +479,95 @@ function mapQuestionnairesToTemplateData(questionnaire1: any, questionnaire2?: a
     return num > 0 ? num.toLocaleString("en-AU", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : ""
   }
 
+  // Format date to Australian format (DD/MM/YYYY)
+  const formatDateAU = (dateValue: any): string => {
+    if (!dateValue) return ""
+    
+    // If already in DD/MM/YYYY format, return as is
+    if (typeof dateValue === "string" && /^\d{2}\/\d{2}\/\d{4}$/.test(dateValue)) {
+      return dateValue
+    }
+    
+    let date: Date | null = null
+    
+    // Try to parse the date
+    if (typeof dateValue === "string") {
+      // Try ISO format (YYYY-MM-DD)
+      if (/^\d{4}-\d{2}-\d{2}/.test(dateValue)) {
+        date = new Date(dateValue)
+      } else {
+        date = new Date(dateValue)
+      }
+    } else if (dateValue instanceof Date) {
+      date = dateValue
+    }
+    
+    if (!date || isNaN(date.getTime())) {
+      // If parsing fails, try to extract date parts from string
+      const match = String(dateValue).match(/(\d{4})-(\d{2})-(\d{2})/)
+      if (match) {
+        const [, year, month, day] = match
+        return `${day}/${month}/${year}`
+      }
+      return ""
+    }
+    
+    // Format as DD/MM/YYYY
+    const day = String(date.getDate()).padStart(2, "0")
+    const month = String(date.getMonth() + 1).padStart(2, "0")
+    const year = date.getFullYear()
+    return `${day}/${month}/${year}`
+  }
+
+  // Format address: put city/state/postcode on the next line and keep state+postcode together
+  const formatAddress = (address: string): string => {
+    if (!address) return ""
+    
+    // Split on the first comma into street and the rest (city/state/postcode)
+    const [line1Raw, ...restParts] = address.split(",")
+    const line1 = line1Raw?.trim() || ""
+    const rest = restParts.join(",").trim()
+
+    if (!rest) {
+      return line1
+    }
+
+    // Keep state and postcode together with a non-breaking space
+    const restFormatted = rest.replace(/\b([A-Z]{2,3})\s+(\d{4})\b/g, "$1\u00A0$2")
+
+    // Return with an explicit line break between street and city/state/postcode
+    return `${line1},\n${restFormatted}`
+  }
+
   const totalHours =
     merged.hours_per_week && merged.weeks_per_year
       ? (toNumber(merged.hours_per_week) * toNumber(merged.weeks_per_year)).toString()
       : ""
 
-  const reportDate =
+  const reportDate = formatDateAU(
     merged.report_date ||
     merged.REPORT_DATE ||
-    (merged.tax_year ? `${merged.tax_year}-06-30` : new Date().toISOString().split("T")[0])
+    (merged.tax_year ? `${merged.tax_year}-06-30` : new Date())
+  )
 
-  const startDateOfHomeBusiness =
+  const startDateOfHomeBusiness = formatDateAU(
     merged.start_date_of_home_business ||
     merged.START_DATE_OF_HOME_BUSINESS ||
     merged.business_start_date ||
     merged.CLIENT_BUSINESS_START_DATE ||
     ""
+  )
 
   // Map all fields from both questionnaires to template placeholders
   return {
     // Client Information
     CLIENT_NAME: merged.client_name || merged.CLIENT_NAME || merged.q1_marital_status || "",
     CLIENT_FULL_NAME: merged.client_full_name || merged.CLIENT_FULL_NAME || merged.client_name || "",
-    CLIENT_ADDRESS: merged.property_address || merged.CLIENT_ADDRESS || "",
+    CLIENT_ADDRESS: formatAddress(merged.property_address || merged.CLIENT_ADDRESS || ""),
     CLIENT_BUSINESS_NAME: merged.business_name || merged.CLIENT_BUSINESS_NAME || merged.industry_description || "",
     CLIENT_BUSINESS_TYPE: merged.business_type || merged.CLIENT_BUSINESS_TYPE || merged.legal_structure || "",
     CLIENT_ABN: merged.abn || merged.CLIENT_ABN || "",
-    CLIENT_BUSINESS_START_DATE: merged.business_start_date || merged.CLIENT_BUSINESS_START_DATE || "",
+    CLIENT_BUSINESS_START_DATE: formatDateAU(merged.business_start_date || merged.CLIENT_BUSINESS_START_DATE || ""),
 
     // Financial Data - Quick Questionnaire
     TAXABLE_INCOME: formatCurrency(merged.taxable_income || merged.q2_annual_income || merged.annual_income) || "",
@@ -714,7 +776,7 @@ function mapQuestionnairesToTemplateData(questionnaire1: any, questionnaire2?: a
     TOTAL_CLAIM_PER_THE_RUNNING_COST_METHOD: "", // This will be calculated if needed
 
     // Aliases for template placeholders (the template uses spaces / different names)
-    "CLIENT ADDRESS": merged.property_address || merged.CLIENT_ADDRESS || "",
+    "CLIENT ADDRESS": formatAddress(merged.property_address || merged.CLIENT_ADDRESS || ""),
     "CLIENT_ NAME": merged.client_name || merged.CLIENT_NAME || "",
     REPORT_DATE: reportDate,
     CLIENT_FIRST_NAME: merged.client_first_name || merged.CLIENT_FIRST_NAME || (merged.client_name || "").split(" ")[0] || "",
@@ -757,8 +819,8 @@ function mapQuestionnairesToTemplateData(questionnaire1: any, questionnaire2?: a
     "Local Council": merged.client_local_council || merged.local_council || merged.council || "",
     LOCAL_COUNCIL: merged.client_local_council || merged.local_council || merged.council || "",
     ABN: merged.abn || merged.CLIENT_ABN || "",
-    BUSINESS_START_DATE: merged.business_start_date || merged.CLIENT_BUSINESS_START_DATE || startDateOfHomeBusiness || "",
-    "Business Start Date": merged.business_start_date || merged.CLIENT_BUSINESS_START_DATE || startDateOfHomeBusiness || "",
+    BUSINESS_START_DATE: formatDateAU(merged.business_start_date || merged.CLIENT_BUSINESS_START_DATE || startDateOfHomeBusiness || ""),
+    "Business Start Date": formatDateAU(merged.business_start_date || merged.CLIENT_BUSINESS_START_DATE || startDateOfHomeBusiness || ""),
     TOTAL_FLOOR_AREA: merged.q16_total_floor_space || merged.total_floor_space_sqm || "",
     "Total Floor Area": merged.q16_total_floor_space || merged.total_floor_space_sqm || "",
     BUILDING_DEPRECIATION: merged.depreciation || merged.q29_equipment_depreciation || "",
