@@ -674,18 +674,21 @@ function mapQuestionnairesToTemplateData(questionnaire1: any, questionnaire2?: a
   const gasDeductibleNum = gasAmount && bupPercentageNum ? gasAmount * (bupPercentageNum / 100) : 0
   const cleaningDeductibleNum = cleaningAmount && bupPercentageNum ? cleaningAmount * (bupPercentageNum / 100) : 0
   
-  // Total running expenses deductible for table = only ELECTRICITY_DEDUCTIBLE + GAS_DEDUCTIBLE + CLEANING_DEDUCTIBLE
-  const totalRunningExpensesDeductibleForTable = electricityDeductibleNum + gasDeductibleNum + cleaningDeductibleNum
+  // Total running expenses deductible for table = TOTAL_RUNNING_EXPENSES × BUSINESS_USE_PERCENTAGE
+  // This is the same as (ELECTRICITY + GAS + CLEANING) × BUP%
+  const totalRunningExpensesDeductibleForTable = totalRunningExpensesForTable && bupPercentageNum 
+    ? totalRunningExpensesForTable * (bupPercentageNum / 100)
+    : (electricityDeductibleNum + gasDeductibleNum + cleaningDeductibleNum) // Fallback to sum of individual deductibles
   
   // Total property deductible for table = sum of all property expense deductibles
   const totalPropertyDeductibleForTable = mortgageDeductibleNum + ratesDeductibleNum + waterDeductibleNum + insuranceDeductibleNum + repairsDeductibleNum + depreciationDeductibleNum
 
   // Total deductible = property deductible + running costs deductible (overall total)
   const totalDeductibleNum = totalPropertyDeductibleNum + runningCostsDeductibleActual
-  // Determine which running method is better
+  // Determine which running method is better (using table running expenses)
   let runningMethod = merged.running_method || merged.RUNNING_METHOD || ""
-  if (!runningMethod && runningCostsDeductibleActual > 0 && fixedRateDeductionNum > 0) {
-    runningMethod = runningCostsDeductibleActual > fixedRateDeductionNum ? "Actual Cost Method" : "Fixed Rate Method"
+  if (!runningMethod && totalRunningExpensesDeductibleForTable > 0 && fixedRateDeductionNum > 0) {
+    runningMethod = totalRunningExpensesDeductibleForTable > fixedRateDeductionNum ? "Actual Cost Method" : "Fixed Rate Method"
   }
 
   // Total annual deduction = property deductible + running costs deductible
@@ -699,18 +702,19 @@ function mapQuestionnairesToTemplateData(questionnaire1: any, questionnaire2?: a
 
   // Actual cost method sentence (e.g., "$1200 × 30% = $360")
   const actualCostDeductionSentence =
-    runningExpensesBase && bupPercentageNum && runningCostsDeductibleActual
-      ? `${formatPlainAmount(runningExpensesBase, true)} × ${bupPercentageNum}% = ${formatPlainAmount(runningCostsDeductibleActual, true)}`
+    totalRunningExpensesForTable && bupPercentageNum && totalRunningExpensesDeductibleForTable
+      ? `${formatPlainAmount(totalRunningExpensesForTable, true)} × ${bupPercentageNum}% = ${formatPlainAmount(totalRunningExpensesDeductibleForTable, true)}`
       : ""
 
-  // Calculate best method comparison
+  // Calculate best method comparison: TOTAL_CLAIM_PER_THE_RUNNING_COST_METHOD - TOTAL_CLAIM_PER_THE_FIXED_COST_METHOD
   let bestMethodComparison = ""
-  if (runningCostsDeductibleActual > 0 && fixedRateDeductionNum > 0) {
-    const difference = Math.abs(runningCostsDeductibleActual - fixedRateDeductionNum)
-    if (runningCostsDeductibleActual > fixedRateDeductionNum) {
-      bestMethodComparison = `Actual Cost Method is ${formatPlainAmount(difference, true)} better`
-    } else if (fixedRateDeductionNum > runningCostsDeductibleActual) {
-      bestMethodComparison = `Fixed Rate Method is ${formatPlainAmount(difference, true)} better`
+  if (totalRunningExpensesDeductibleForTable > 0 && fixedRateDeductionNum > 0) {
+    const difference = totalRunningExpensesDeductibleForTable - fixedRateDeductionNum
+    const absDifference = Math.abs(difference)
+    if (difference > 0) {
+      bestMethodComparison = `Actual Cost Method is ${formatPlainAmount(absDifference, true)} better`
+    } else if (difference < 0) {
+      bestMethodComparison = `Fixed Rate Method is ${formatPlainAmount(absDifference, true)} better`
     } else {
       bestMethodComparison = "Both methods result in the same deduction"
     }
@@ -974,7 +978,7 @@ function mapQuestionnairesToTemplateData(questionnaire1: any, questionnaire2?: a
     SS_DESC: merged.ss_q63_desc || "",
 
     // Total Claims
-    TOTAL_CLAIM_PER_THE_RUNNING_COST_METHOD: formatPlainAmount(runningCostsDeductibleActual, true) || "",
+    TOTAL_CLAIM_PER_THE_RUNNING_COST_METHOD: formatPlainAmount(totalRunningExpensesDeductibleForTable, true) || "", // Same as TOTAL_RUNNING_COSTS_DEDUCTIBLE
 
     // Aliases for template placeholders (the template uses spaces / different names)
     "CLIENT ADDRESS": formatAddress(merged.property_address || merged.CLIENT_ADDRESS || ""),
@@ -1004,7 +1008,7 @@ function mapQuestionnairesToTemplateData(questionnaire1: any, questionnaire2?: a
     ARCHIVE_ROOM_FLOOR_AREA: archiveAreaNum > 0 ? `${archiveAreaNum} m²` : "",
     TOTAL_BUSINESS_USE_FLOOR_AREA: totalBusinessUseFloorAreaNum > 0 ? `${totalBusinessUseFloorAreaNum} m²` : "",
     BUSINESS_USE_PERCENTAGE: businessUsePercentageDisplay || "",
-    TOTAL_RUNNING_COSTS_DEDUCTIBLE: formatPlainAmount(runningCostsDeductibleActual, true) || "",
+    TOTAL_RUNNING_COSTS_DEDUCTIBLE: formatPlainAmount(totalRunningExpensesDeductibleForTable, true) || "", // Calculated as TOTAL_RUNNING_EXPENSES × BUSINESS_USE_PERCENTAGE
     ACTUAL_COST_METHOD_DEDUCTION: formatCurrency(runningCostsDeductibleActual) || "",
     RUNNING_COSTS_DEDUCTION_ACTUAL: formatCurrency(runningCostsDeductibleActual) || "",
     ACTUAL_COST_METHOD_DEDUCTION_DISPLAY: formatCurrency(runningCostsDeductibleActual) || "",
@@ -1018,7 +1022,7 @@ function mapQuestionnairesToTemplateData(questionnaire1: any, questionnaire2?: a
       merged.total_fixed_rate_method_claim || merged.TOTAL_FIXED_RATE_METHOD_CLAIM || fixedRateDeductionNum,
       true,
     ) || "",
-    "TOTAL_CLAIM_ PER_ THE_RUNNING_COST_METHOD": formatPlainAmount(runningCostsDeductibleActual, true) || "",
+    "TOTAL_CLAIM_ PER_ THE_RUNNING_COST_METHOD": formatPlainAmount(totalRunningExpensesDeductibleForTable, true) || "", // Same as TOTAL_RUNNING_COSTS_DEDUCTIBLE
     "TOTAL_CLAIM_ PER_ THE_FIXED_COST_METHOD": formatPlainAmount(
       merged.total_claim_per_fixed_cost_method || merged.TOTAL_CLAIM_PER_FIXED_COST_METHOD || fixedRateDeductionNum,
       true,
@@ -1027,6 +1031,11 @@ function mapQuestionnairesToTemplateData(questionnaire1: any, questionnaire2?: a
     RECOMMENDED_METHOD: merged.recommended_method || merged.strategy_name || merged.strategy || "",
     TOTAL_PROPERTY_DEDUCTIBLE: formatCurrency(totalPropertyDeductibleForTable) || "", // Sum of MORTGAGE_DEDUCTIBLE + RATES_DEDUCTIBLE + WATER_DEDUCTIBLE + INSURANCE_DEDUCTIBLE + REPAIRS_DEDUCTIBLE + DEPRECIATION_DEDUCTIBLE
     RUNNING_METHOD: runningMethod || "",
+    RUNNING_METHOD_DEDUCTIBLE: runningMethod === "Actual Cost Method" 
+      ? formatCurrency(totalRunningExpensesDeductibleForTable) || "" // Use TOTAL_CLAIM_PER_THE_RUNNING_COST_METHOD
+      : runningMethod === "Fixed Rate Method"
+      ? formatCurrency(fixedRateDeductionNum) || "" // Use TOTAL_CLAIM_PER_THE_FIXED_COST_METHOD
+      : formatCurrency(totalRunningExpensesDeductibleForTable || fixedRateDeductionNum) || "", // Default to whichever is available
     RUNNING_EXPENSES_DEDUCTION: formatCurrency(runningCostsDeductibleActual) || "", // Deduction amount for running expenses in summary table
     TOTAL_ANNUAL_DEDUCTION: formatCurrency(totalAnnualDeductionNum) || "",
     START_DATE_OF_HOME_BUSINESS: startDateOfHomeBusiness,
@@ -1058,7 +1067,7 @@ function mapQuestionnairesToTemplateData(questionnaire1: any, questionnaire2?: a
     TOTAL_BUSINESS_USE_FLOOR_AREA_ALIAS: totalBusinessUseFloorAreaNum > 0 ? `${totalBusinessUseFloorAreaNum} m²` : "",
     TOTAL_HABITABLE_FLOOR_AREA_ALIAS: totalHabitableFloorAreaNum > 0 ? `${totalHabitableFloorAreaNum} m²` : "",
     BUSINESS_USE_PERCENTAGE_ALIAS: businessUsePercentageDisplay || "",
-    "TOTAL_CLAIM_ PER_ THE_RUNNING_COST_METHOD_ALIAS": formatPlainAmount(runningCostsDeductibleActual, true) || "",
+    "TOTAL_CLAIM_ PER_ THE_RUNNING_COST_METHOD_ALIAS": formatPlainAmount(totalRunningExpensesDeductibleForTable, true) || "", // Same as TOTAL_RUNNING_COSTS_DEDUCTIBLE
     "TOTAL_CLAIM_ PER_ THE_FIXED_COST_METHOD_ALIAS": formatPlainAmount(
       merged.total_claim_per_fixed_cost_method || merged.TOTAL_CLAIM_PER_FIXED_COST_METHOD || fixedRateDeductionNum,
       true,
