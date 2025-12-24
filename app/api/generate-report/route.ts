@@ -584,14 +584,59 @@ function mapQuestionnairesToTemplateData(questionnaire1: any, questionnaire2?: a
       ? `${totalHoursNum} hours × $0.70 = ${formatPlainAmount(fixedRateDeductionNum, true)}`
       : ""
   const bupPercentageNum = toNumber(merged.bup_percentage || merged.business_use_percentage || merged.BUP || 0)
+  
+  // Derive running expenses: prefer provided total, else auto-sum common running expense fields
+  const runningExpenseItems = [
+    merged.electricity_annual || merged.questionnaire_data?.electricity_annual || merged.ELECTRICITY || merged.electricity || 0,
+    merged.gas_annual || merged.questionnaire_data?.gas_annual || merged.GAS || merged.gas || 0,
+    merged.cleaning_annual || merged.questionnaire_data?.cleaning_annual || merged.CLEANING || merged.cleaning || 0,
+    merged.security_annual || merged.questionnaire_data?.security_annual || merged.SECURITY || merged.security || 0,
+    merged.phone_annual || merged.questionnaire_data?.phone_annual || merged.PHONE || merged.phone || 0,
+    merged.internet_annual || merged.questionnaire_data?.internet_annual || merged.INTERNET || merged.internet || 0,
+    merged.heating_cooling_annual || merged.questionnaire_data?.heating_cooling_annual || merged.HEATING_COOLING || merged.heating_cooling || 0,
+  ].map(toNumber)
+  
+  const runningExpensesAutoSum = runningExpenseItems.reduce((sum, v) => sum + (isNaN(v) ? 0 : v), 0)
   const runningExpensesBase = toNumber(
-    merged.total_running_expenses || merged.running_expenses || merged.RUNNING_EXPENSES || 0,
-  )
+    merged.total_running_expenses || 
+    merged.questionnaire_data?.total_running_expenses ||
+    merged.running_expenses || 
+    merged.RUNNING_EXPENSES || 
+    merged.TOTAL_RUNNING_EXPENSES ||
+    0,
+  ) || runningExpensesAutoSum
   const runningCostsDeductibleActual = toNumber(
     merged.total_running_costs_deductible ||
     merged.running_costs_deductible ||
     (runningExpensesBase && bupPercentageNum ? runningExpensesBase * (bupPercentageNum / 100) : 0),
-  )
+  ) ||
+    // Demo fallback: use provided total claim if present (for demo scenarios)
+    toNumber(
+      merged.total_claim_per_the_running_cost_method ||
+        merged.TOTAL_CLAIM_PER_THE_RUNNING_COST_METHOD ||
+        merged["TOTAL_CLAIM_ PER_THE_RUNNING_COST_METHOD"] ||
+        merged["TOTAL_CLAIM_ PER_ THE_RUNNING_COST_METHOD"] ||
+        merged["TOTAL_CLAIM_ PER_ THE_RUNNING_COST_METHOD "],
+    )
+
+  // Actual cost method sentence (e.g., "$1200 × 30% = $360")
+  const actualCostDeductionSentence =
+    runningExpensesBase && bupPercentageNum && runningCostsDeductibleActual
+      ? `${formatPlainAmount(runningExpensesBase, true)} × ${bupPercentageNum}% = ${formatPlainAmount(runningCostsDeductibleActual, true)}`
+      : ""
+
+  // Calculate best method comparison
+  let bestMethodComparison = ""
+  if (runningCostsDeductibleActual > 0 && fixedRateDeductionNum > 0) {
+    const difference = Math.abs(runningCostsDeductibleActual - fixedRateDeductionNum)
+    if (runningCostsDeductibleActual > fixedRateDeductionNum) {
+      bestMethodComparison = `Actual Cost Method is ${formatPlainAmount(difference, true)} better`
+    } else if (fixedRateDeductionNum > runningCostsDeductibleActual) {
+      bestMethodComparison = `Fixed Rate Method is ${formatPlainAmount(difference, true)} better`
+    } else {
+      bestMethodComparison = "Both methods result in the same deduction"
+    }
+  }
 
   const reportDate = formatDateAU(
     merged.report_date ||
@@ -842,7 +887,7 @@ function mapQuestionnairesToTemplateData(questionnaire1: any, questionnaire2?: a
     SS_DESC: merged.ss_q63_desc || "",
 
     // Total Claims
-    TOTAL_CLAIM_PER_THE_RUNNING_COST_METHOD: "", // This will be calculated if needed
+    TOTAL_CLAIM_PER_THE_RUNNING_COST_METHOD: formatPlainAmount(runningCostsDeductibleActual, true) || "",
 
     // Aliases for template placeholders (the template uses spaces / different names)
     "CLIENT ADDRESS": formatAddress(merged.property_address || merged.CLIENT_ADDRESS || ""),
@@ -875,6 +920,8 @@ function mapQuestionnairesToTemplateData(questionnaire1: any, questionnaire2?: a
     RUNNING_COSTS_DEDUCTION_ACTUAL: formatCurrency(runningCostsDeductibleActual) || "",
     ACTUAL_COST_METHOD_DEDUCTION_DISPLAY: formatCurrency(runningCostsDeductibleActual) || "",
     RUNNING_COSTS_DEDUCTION_ACTUAL_METHOD: formatCurrency(runningCostsDeductibleActual) || "",
+    ACTUAL_COST_DEDUCTION_SENTENCE: actualCostDeductionSentence || "",
+    RUNNING_COSTS_DEDUCTION_SENTENCE_ACTUAL: actualCostDeductionSentence || "",
     TOTAL_WEEKLY_HOURS_WORKED: merged.hours_per_week?.toString() || "",
     TOTAL_NUMBER_OF_WEEKS_WORKED: merged.weeks_per_year?.toString() || "52",
     TOTAL_NUMBER_OF_HOURS_WORKED: totalHours,
@@ -882,12 +929,12 @@ function mapQuestionnairesToTemplateData(questionnaire1: any, questionnaire2?: a
       merged.total_fixed_rate_method_claim || merged.TOTAL_FIXED_RATE_METHOD_CLAIM || fixedRateDeductionNum,
       true,
     ) || "",
-    "TOTAL_CLAIM_ PER_ THE_RUNNING_COST_METHOD": merged.total_claim_per_running_cost_method || merged.TOTAL_CLAIM_PER_RUNNING_COST_METHOD || "",
+    "TOTAL_CLAIM_ PER_ THE_RUNNING_COST_METHOD": formatPlainAmount(runningCostsDeductibleActual, true) || "",
     "TOTAL_CLAIM_ PER_ THE_FIXED_COST_METHOD": formatPlainAmount(
       merged.total_claim_per_fixed_cost_method || merged.TOTAL_CLAIM_PER_FIXED_COST_METHOD || fixedRateDeductionNum,
       true,
     ) || "",
-    BEST_METHOD_COMPARISON: merged.best_method_comparison || "",
+    BEST_METHOD_COMPARISON: merged.best_method_comparison || merged.BEST_METHOD_COMPARISON || bestMethodComparison || "",
     RECOMMENDED_METHOD: merged.recommended_method || merged.strategy_name || merged.strategy || "",
     TOTAL_PROPERTY_DEDUCTIBLE: merged.total_property_deductible || "",
     RUNNING_METHOD: merged.running_method || "",
@@ -921,9 +968,12 @@ function mapQuestionnairesToTemplateData(questionnaire1: any, questionnaire2?: a
     TOTAL_BUSINESS_USE_FLOOR_AREA_ALIAS: merged.total_business_use_floor_area || merged.business_floor_space_sqm || "",
     TOTAL_HABITABLE_FLOOR_AREA_ALIAS: merged.total_habitable_floor_area || merged.total_floor_space_sqm || "",
     BUSINESS_USE_PERCENTAGE_ALIAS: merged.bup_percentage?.toString() || "",
-    "TOTAL_CLAIM_ PER_ THE_RUNNING_COST_METHOD_ALIAS": merged.total_claim_per_running_cost_method || "",
-    "TOTAL_CLAIM_ PER_ THE_FIXED_COST_METHOD_ALIAS": merged.total_claim_per_fixed_cost_method || "",
-    BEST_METHOD_COMPARISON_ALIAS: merged.best_method_comparison || "",
+    "TOTAL_CLAIM_ PER_ THE_RUNNING_COST_METHOD_ALIAS": formatPlainAmount(runningCostsDeductibleActual, true) || "",
+    "TOTAL_CLAIM_ PER_ THE_FIXED_COST_METHOD_ALIAS": formatPlainAmount(
+      merged.total_claim_per_fixed_cost_method || merged.TOTAL_CLAIM_PER_FIXED_COST_METHOD || fixedRateDeductionNum,
+      true,
+    ) || "",
+    BEST_METHOD_COMPARISON_ALIAS: merged.best_method_comparison || merged.BEST_METHOD_COMPARISON || bestMethodComparison || "",
     TOTAL_PROPERTY_DEDUCTIBLE_ALIAS: merged.total_property_deductible || "",
     RUNNING_METHOD_ALIAS: merged.running_method || "",
     TOTAL_ANNUAL_DEDUCTION_ALIAS: merged.total_annual_deduction || "",
