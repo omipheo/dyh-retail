@@ -619,6 +619,53 @@ function mapQuestionnairesToTemplateData(questionnaire1: any, questionnaire2?: a
         merged["TOTAL_CLAIM_ PER_ THE_RUNNING_COST_METHOD "],
     )
 
+  // Property expenses (occupancy) and depreciation
+  const mortgageInterest = toNumber(
+    merged.questionnaire_data?.mortgage_interest || merged.mortgage_interest || merged.q29_loan_interest || merged.HOME_LOAN_INTEREST || 0,
+  )
+  const councilRates = toNumber(merged.questionnaire_data?.council_rates || merged.council_rates || merged.q29_council_rates || merged.COUNCIL_RATES || 0)
+  const waterRates = toNumber(merged.questionnaire_data?.water_rates || merged.water_rates || merged.q29_water_rates || merged.WATER_RATES || 0)
+  const buildingInsurance = toNumber(
+    merged.questionnaire_data?.building_insurance ||
+      merged.building_insurance ||
+      merged.q29_building_insurance ||
+      merged.q29_insurance ||
+      merged.BUILDING_INSURANCE ||
+      merged.INSURANCE ||
+      0,
+  )
+  const repairsMaintenance = toNumber(
+    merged.questionnaire_data?.repairs_maintenance || merged.repairs_maintenance || merged.REPAIRS_MAINTENANCE || merged.q29_repairs_maintenance || 0,
+  )
+  const buildingValue = toNumber(merged.building_value || merged.BUILDING_VALUE || 0)
+  const buildingDepreciation = buildingValue
+    ? buildingValue * 0.025
+    : toNumber(merged.questionnaire_data?.depreciation || merged.building_depreciation || merged.BUILDING_DEPRECIATION || merged.q29_equipment_depreciation || 0)
+
+  const propertyExpensesTotal =
+    mortgageInterest + councilRates + waterRates + buildingInsurance + repairsMaintenance + buildingDepreciation
+
+  const propertyDeductibleCalculated =
+    propertyExpensesTotal && bupPercentageNum ? propertyExpensesTotal * (bupPercentageNum / 100) : 0
+
+  const totalPropertyDeductibleNum = toNumber(merged.total_property_deductible || merged.TOTAL_PROPERTY_DEDUCTIBLE || 0) ||
+    propertyDeductibleCalculated
+
+  // Determine which running method is better
+  let runningMethod = merged.running_method || merged.RUNNING_METHOD || ""
+  if (!runningMethod && runningCostsDeductibleActual > 0 && fixedRateDeductionNum > 0) {
+    runningMethod = runningCostsDeductibleActual > fixedRateDeductionNum ? "Actual Cost Method" : "Fixed Rate Method"
+  }
+
+  // Total annual deduction = property deductible + running costs deductible
+  const totalAnnualDeductionNum = toNumber(
+    merged.total_annual_deduction ||
+      merged.TOTAL_ANNUAL_DEDUCTION ||
+      (totalPropertyDeductibleNum || runningCostsDeductibleActual
+        ? totalPropertyDeductibleNum + runningCostsDeductibleActual
+        : 0),
+  )
+
   // Actual cost method sentence (e.g., "$1200 × 30% = $360")
   const actualCostDeductionSentence =
     runningExpensesBase && bupPercentageNum && runningCostsDeductibleActual
@@ -936,9 +983,9 @@ function mapQuestionnairesToTemplateData(questionnaire1: any, questionnaire2?: a
     ) || "",
     BEST_METHOD_COMPARISON: merged.best_method_comparison || merged.BEST_METHOD_COMPARISON || bestMethodComparison || "",
     RECOMMENDED_METHOD: merged.recommended_method || merged.strategy_name || merged.strategy || "",
-    TOTAL_PROPERTY_DEDUCTIBLE: merged.total_property_deductible || "",
-    RUNNING_METHOD: merged.running_method || "",
-    TOTAL_ANNUAL_DEDUCTION: merged.total_annual_deduction || "",
+    TOTAL_PROPERTY_DEDUCTIBLE: formatCurrency(totalPropertyDeductibleNum) || "",
+    RUNNING_METHOD: runningMethod || "",
+    TOTAL_ANNUAL_DEDUCTION: formatCurrency(totalAnnualDeductionNum) || "",
     START_DATE_OF_HOME_BUSINESS: startDateOfHomeBusiness,
 
     // Additional aliases to satisfy template placeholders without editing the DOCX
@@ -974,9 +1021,9 @@ function mapQuestionnairesToTemplateData(questionnaire1: any, questionnaire2?: a
       true,
     ) || "",
     BEST_METHOD_COMPARISON_ALIAS: merged.best_method_comparison || merged.BEST_METHOD_COMPARISON || bestMethodComparison || "",
-    TOTAL_PROPERTY_DEDUCTIBLE_ALIAS: merged.total_property_deductible || "",
-    RUNNING_METHOD_ALIAS: merged.running_method || "",
-    TOTAL_ANNUAL_DEDUCTION_ALIAS: merged.total_annual_deduction || "",
+    TOTAL_PROPERTY_DEDUCTIBLE_ALIAS: formatCurrency(totalPropertyDeductibleNum) || "",
+    RUNNING_METHOD_ALIAS: runningMethod || "",
+    TOTAL_ANNUAL_DEDUCTION_ALIAS: formatCurrency(totalAnnualDeductionNum) || "",
     START_DATE_OF_HOME_BUSINESS_ALIAS: startDateOfHomeBusiness,
 
     // Pass through any additional fields (flatten nested objects)
