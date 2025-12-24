@@ -423,7 +423,7 @@ function cleanFragmentedPlaceholders(zip: PizZip): PizZip {
     if (totalReplacements <= 10) {
       console.log(`[v0] 🔧 Fixed split closing: {{${placeholder}}}`)
     }
-    return cleaned
+      return cleaned
   })
 
   // Pattern 3: More complex splits - {{PLACEHOLDER</w:t>...<w:t>_NAME}}
@@ -476,7 +476,7 @@ function mapQuestionnairesToTemplateData(questionnaire1: any, questionnaire2?: a
 
   const formatCurrency = (value: any): string => {
     const num = toNumber(value)
-    return num > 0 ? num.toLocaleString("en-AU", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : ""
+    return num > 0 ? `$${num.toLocaleString("en-AU", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : ""
   }
 
   // Format as plain rounded number without commas or decimals
@@ -976,14 +976,14 @@ function mapQuestionnairesToTemplateData(questionnaire1: any, questionnaire2?: a
     REPORT_DATE: reportDate,
     CLIENT_FIRST_NAME: merged.client_first_name || merged.CLIENT_FIRST_NAME || (merged.client_name || "").split(" ")[0] || "",
     CLIENT_LOCAL_COUNCIL: merged.client_local_council || merged.questionnaire_data?.client_local_council || merged.local_council || merged.council || merged.CLIENT_LOCAL_COUNCIL || "",
-    TOTAL_FLOOR_AREA_M2: totalHabitableFloorAreaNum > 0 ? totalHabitableFloorAreaNum.toString() : "",
+    TOTAL_FLOOR_AREA_M2: totalHabitableFloorAreaNum > 0 ? `${totalHabitableFloorAreaNum} m²` : "",
     BUILDING_DEPRECIATION_VALUE: formatCurrency(buildingDepreciation) || "",
-    DEDICATED_OFFICE_AREA_M2: homeOfficeAreaNum > 0 ? homeOfficeAreaNum.toString() : "",
-    DEDICATED_MEETING_AREA_M2: meetingAreaNum > 0 ? meetingAreaNum.toString() : "",
-    DEDICATED_ARCHIVE_AREA_M2: archiveAreaNum > 0 ? archiveAreaNum.toString() : "",
-    TOTAL_BUSINESS_USE_AREA_M2: totalBusinessUseFloorAreaNum > 0 ? totalBusinessUseFloorAreaNum.toString() : "",
+    DEDICATED_OFFICE_AREA_M2: homeOfficeAreaNum > 0 ? `${homeOfficeAreaNum} m²` : "",
+    DEDICATED_MEETING_AREA_M2: meetingAreaNum > 0 ? `${meetingAreaNum} m²` : "",
+    DEDICATED_ARCHIVE_AREA_M2: archiveAreaNum > 0 ? `${archiveAreaNum} m²` : "",
+    TOTAL_BUSINESS_USE_AREA_M2: totalBusinessUseFloorAreaNum > 0 ? `${totalBusinessUseFloorAreaNum} m²` : "",
     MORTGAGE: formatCurrency(mortgageInterest) || "",
-    BUP: businessUsePercentageNum > 0 ? businessUsePercentageNum.toString() : "", // Without % for templates that add it
+    BUP: businessUsePercentageDisplay || "", // With % sign for Business Use column
     BUP_WITH_PERCENT: businessUsePercentageDisplay || "", // With % for templates that don't add it
     MORTGAGE_DEDUCTIBLE: formatCurrency(mortgageDeductibleNum) || "",
     RATES: formatCurrency(councilRates) || "",
@@ -992,11 +992,11 @@ function mapQuestionnairesToTemplateData(questionnaire1: any, questionnaire2?: a
     TOTAL_DEDUCTIBLE: formatCurrency(totalDeductibleNum) || "",
     TOTAL_RUNNING_EXPENSES: formatCurrency(runningExpensesBase) || "",
     TOTAL_RUNNING_EXPENSES_DEDUCTIBLE: formatCurrency(runningCostsDeductibleActual) || "", // Running expenses deductible for the running expenses table
-    TOTAL_HABITABLE_FLOOR_AREA: totalHabitableFloorAreaNum > 0 ? totalHabitableFloorAreaNum.toString() : "",
-    HOME_OFFICE_FLOOR_AREA: homeOfficeAreaNum > 0 ? homeOfficeAreaNum.toString() : "",
-    MEETING_AREA_FLOOR_AREA: meetingAreaNum > 0 ? meetingAreaNum.toString() : "",
-    ARCHIVE_ROOM_FLOOR_AREA: archiveAreaNum > 0 ? archiveAreaNum.toString() : "",
-    TOTAL_BUSINESS_USE_FLOOR_AREA: totalBusinessUseFloorAreaNum > 0 ? totalBusinessUseFloorAreaNum.toString() : "",
+    TOTAL_HABITABLE_FLOOR_AREA: totalHabitableFloorAreaNum > 0 ? `${totalHabitableFloorAreaNum} m²` : "",
+    HOME_OFFICE_FLOOR_AREA: homeOfficeAreaNum > 0 ? `${homeOfficeAreaNum} m²` : "",
+    MEETING_AREA_FLOOR_AREA: meetingAreaNum > 0 ? `${meetingAreaNum} m²` : "",
+    ARCHIVE_ROOM_FLOOR_AREA: archiveAreaNum > 0 ? `${archiveAreaNum} m²` : "",
+    TOTAL_BUSINESS_USE_FLOOR_AREA: totalBusinessUseFloorAreaNum > 0 ? `${totalBusinessUseFloorAreaNum} m²` : "",
     BUSINESS_USE_PERCENTAGE: businessUsePercentageDisplay || "",
     TOTAL_RUNNING_COSTS_DEDUCTIBLE: formatPlainAmount(runningCostsDeductibleActual, true) || "",
     ACTUAL_COST_METHOD_DEDUCTION: formatCurrency(runningCostsDeductibleActual) || "",
@@ -1033,8 +1033,8 @@ function mapQuestionnairesToTemplateData(questionnaire1: any, questionnaire2?: a
     "Business Start Date": formatDateAU(merged.business_start_date || merged.CLIENT_BUSINESS_START_DATE || startDateOfHomeBusiness || ""),
     TOTAL_FLOOR_AREA: merged.q16_total_floor_space || merged.total_floor_space_sqm || "",
     "Total Floor Area": merged.q16_total_floor_space || merged.total_floor_space_sqm || "",
-    BUILDING_DEPRECIATION: merged.depreciation || merged.q29_equipment_depreciation || "",
-    "Building Depreciation (2.5% p.a.)": merged.depreciation || merged.q29_equipment_depreciation || "",
+    BUILDING_DEPRECIATION: formatCurrency(toNumber(merged.depreciation || merged.q29_equipment_depreciation || buildingDepreciation)) || "",
+    "Building Depreciation (2.5% p.a.)": formatCurrency(toNumber(merged.depreciation || merged.q29_equipment_depreciation || buildingDepreciation)) || "",
     HOME_OFFICE: merged.home_office_floor_area || merged.business_floor_space_sqm || merged.q17_business_floor_space || "",
     "Home Office": merged.home_office_floor_area || merged.business_floor_space_sqm || merged.q17_business_floor_space || "",
     MEETING_AREA: merged.meeting_area_floor_area || merged.dedicated_meeting_area_m2 || "",
@@ -1043,14 +1043,14 @@ function mapQuestionnairesToTemplateData(questionnaire1: any, questionnaire2?: a
     "Archive Room": merged.archive_room_floor_area || merged.dedicated_archive_area_m2 || "",
     TOTAL_BUSINESS_USE_AREA: merged.total_business_use_area_m2 || merged.business_floor_space_sqm || merged.q17_business_floor_space || "",
     "Total Business Use Area": merged.total_business_use_area_m2 || merged.business_floor_space_sqm || merged.q17_business_floor_space || "",
-    "Council Rates": merged.council_rates || merged.q29_council_rates || "",
-    "Water Rates": merged.water_rates || merged.q29_water_rates || "",
-    "Total Property Expenses": merged.total_property_expenses || "",
-    TOTAL_PROPERTY_EXPENSES_ALIAS: merged.total_property_expenses || "",
-    TOTAL_DEDUCTIBLE_ALIAS: merged.total_deductible || "",
-    TOTAL_RUNNING_EXPENSES_ALIAS: merged.total_running_expenses || "",
-    TOTAL_BUSINESS_USE_FLOOR_AREA_ALIAS: totalBusinessUseFloorAreaNum > 0 ? totalBusinessUseFloorAreaNum.toString() : "",
-    TOTAL_HABITABLE_FLOOR_AREA_ALIAS: totalHabitableFloorAreaNum > 0 ? totalHabitableFloorAreaNum.toString() : "",
+    "Council Rates": formatCurrency(toNumber(merged.council_rates || merged.q29_council_rates || councilRates)) || "",
+    "Water Rates": formatCurrency(toNumber(merged.water_rates || merged.q29_water_rates || waterRates)) || "",
+    "Total Property Expenses": formatCurrency(toNumber(merged.total_property_expenses || propertyExpensesTotal)) || "",
+    TOTAL_PROPERTY_EXPENSES_ALIAS: formatCurrency(toNumber(merged.total_property_expenses || propertyExpensesTotal)) || "",
+    TOTAL_DEDUCTIBLE_ALIAS: formatCurrency(toNumber(merged.total_deductible || totalDeductibleNum)) || "",
+    TOTAL_RUNNING_EXPENSES_ALIAS: formatCurrency(toNumber(merged.total_running_expenses || runningExpensesBase)) || "",
+    TOTAL_BUSINESS_USE_FLOOR_AREA_ALIAS: totalBusinessUseFloorAreaNum > 0 ? `${totalBusinessUseFloorAreaNum} m²` : "",
+    TOTAL_HABITABLE_FLOOR_AREA_ALIAS: totalHabitableFloorAreaNum > 0 ? `${totalHabitableFloorAreaNum} m²` : "",
     BUSINESS_USE_PERCENTAGE_ALIAS: businessUsePercentageDisplay || "",
     "TOTAL_CLAIM_ PER_ THE_RUNNING_COST_METHOD_ALIAS": formatPlainAmount(runningCostsDeductibleActual, true) || "",
     "TOTAL_CLAIM_ PER_ THE_FIXED_COST_METHOD_ALIAS": formatPlainAmount(
