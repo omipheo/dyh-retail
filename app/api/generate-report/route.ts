@@ -583,7 +583,9 @@ function mapQuestionnairesToTemplateData(questionnaire1: any, questionnaire2?: a
     totalHoursNum && fixedRateDeductionNum
       ? `${totalHoursNum} hours × $0.70 = ${formatPlainAmount(fixedRateDeductionNum, true)}`
       : ""
-  const bupPercentageNum = toNumber(merged.bup_percentage || merged.business_use_percentage || merged.BUP || 0)
+  // Get BUP percentage and round to nearest whole number (as per business rule)
+  const bupPercentageRaw = toNumber(merged.bup_percentage || merged.business_use_percentage || merged.BUP || 0)
+  const bupPercentageNum = bupPercentageRaw > 0 ? Math.round(bupPercentageRaw) : 0
   
   // Derive running expenses: prefer provided total, else auto-sum common running expense fields
   const runningExpenseItems = [
@@ -775,12 +777,13 @@ function mapQuestionnairesToTemplateData(questionnaire1: any, questionnaire2?: a
     0,
   ) || (homeOfficeAreaNum + meetingAreaNum + archiveAreaNum)
   
-  // Calculate business use percentage if not provided
+  // Calculate business use percentage if not provided (rounded to nearest whole number)
   const calculatedBUP = totalHabitableFloorAreaNum > 0 && totalBusinessUseFloorAreaNum > 0
     ? Math.round((totalBusinessUseFloorAreaNum / totalHabitableFloorAreaNum) * 100)
     : 0
   
-  const businessUsePercentageNum = bupPercentageNum || calculatedBUP
+  // Use provided BUP (already rounded) or calculated BUP (already rounded), then ensure final value is rounded
+  const businessUsePercentageNum = Math.round(bupPercentageNum || calculatedBUP)
   const businessUsePercentageDisplay = businessUsePercentageNum > 0 ? `${businessUsePercentageNum}%` : ""
 
   // Map all fields from both questionnaires to template placeholders
