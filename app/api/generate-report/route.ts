@@ -37,7 +37,7 @@ async function convertDocxToPdf(docxBuffer: Buffer): Promise<Buffer> {
   // Skip docx-pdf entirely - it tries to use html-pdf/PhantomJS which crashes the server
   // Go straight to CloudConvert or DOCX fallback
   console.log("[v0] ℹ️  Skipping docx-pdf (may cause crashes with html-pdf/PhantomJS)")
-  
+
   // Try CloudConvert API if configured (with 90 second timeout to allow for conversion time)
   if (process.env.CLOUDCONVERT_API_KEY) {
     try {
@@ -103,7 +103,7 @@ async function convertViaCloudConvert(docxBuffer: Buffer): Promise<Buffer> {
     try {
       const errorData = JSON.parse(errorText)
       errorMessage = errorData?.message || errorMessage
-    } catch {}
+    } catch { }
     throw new Error(`CloudConvert job creation failed: ${jobResponse.status} ${errorMessage} ${errorText}`)
   }
 
@@ -125,7 +125,7 @@ async function convertViaCloudConvert(docxBuffer: Buffer): Promise<Buffer> {
     })
     const statusData = await statusResponse.json()
     importTask = statusData.data.tasks.find((t: any) => t.operation === "import/upload")
-    
+
     if (importTask?.status === "waiting" && importTask?.result?.form) {
       importTaskReady = true
     }
@@ -146,12 +146,12 @@ async function convertViaCloudConvert(docxBuffer: Buffer): Promise<Buffer> {
   // Use form-data library for proper multipart/form-data encoding
   const FormDataNode = require("form-data")
   const form = new FormDataNode()
-  
+
   // Add all form fields from CloudConvert
   Object.entries(uploadFields).forEach(([key, value]) => {
     form.append(key, String(value))
   })
-  
+
   // Add the file with proper metadata
   form.append("file", docxBuffer, {
     filename: "document.docx",
@@ -161,13 +161,13 @@ async function convertViaCloudConvert(docxBuffer: Buffer): Promise<Buffer> {
   // Use native Node.js http/https for form-data upload (fetch doesn't handle streams well)
   const https = require("https")
   const http = require("http")
-  
+
   // Upload the file with timeout and proper cleanup
   await new Promise<void>((resolve, reject) => {
     const parsedUrl = new URL(uploadUrl)
     const isHttps = parsedUrl.protocol === "https:"
     const client = isHttps ? https : http
-    
+
     const options = {
       hostname: parsedUrl.hostname,
       port: parsedUrl.port || (isHttps ? 443 : 80),
@@ -179,14 +179,14 @@ async function convertViaCloudConvert(docxBuffer: Buffer): Promise<Buffer> {
 
     let isResolved = false
     let req: any = null
-    
+
     const cleanup = () => {
       try {
         if (req && !req.destroyed) req.destroy()
         if (form && typeof form.destroy === "function") form.destroy()
-      } catch {}
+      } catch { }
     }
-    
+
     const safeResolve = () => {
       if (!isResolved) {
         isResolved = true
@@ -194,7 +194,7 @@ async function convertViaCloudConvert(docxBuffer: Buffer): Promise<Buffer> {
         resolve()
       }
     }
-    
+
     const safeReject = (err: any) => {
       if (!isResolved) {
         isResolved = true
@@ -246,7 +246,7 @@ async function convertViaCloudConvert(docxBuffer: Buffer): Promise<Buffer> {
   try {
     while (status !== "finished" && attempts < maxAttempts) {
       await new Promise((resolve) => setTimeout(resolve, pollInterval))
-      
+
       try {
         // Cleanup previous controller if it exists
         if (statusController) {
@@ -255,21 +255,21 @@ async function convertViaCloudConvert(docxBuffer: Buffer): Promise<Buffer> {
         if (statusTimeoutId) {
           clearTimeout(statusTimeoutId)
         }
-        
+
         statusController = new AbortController()
         statusTimeoutId = setTimeout(() => {
           if (statusController) {
             statusController.abort()
           }
         }, 10000) // 10 second timeout per request
-        
+
         const statusResponse = await fetch(`${baseUrl}/jobs/${jobId}`, {
           headers: {
             Authorization: `Bearer ${apiKey}`,
           },
           signal: statusController.signal,
         })
-        
+
         if (statusTimeoutId) {
           clearTimeout(statusTimeoutId)
           statusTimeoutId = null
@@ -315,29 +315,29 @@ async function convertViaCloudConvert(docxBuffer: Buffer): Promise<Buffer> {
   // Get the final job status to find export URL with timeout
   let controller1: AbortController | null = null
   let timeoutId1: NodeJS.Timeout | null = null
-  
+
   try {
     controller1 = new AbortController()
     timeoutId1 = setTimeout(() => {
       if (controller1) controller1.abort()
     }, 10000)
-    
+
     const finalStatusResponse = await fetch(`${baseUrl}/jobs/${jobId}`, {
       headers: {
         Authorization: `Bearer ${apiKey}`,
       },
       signal: controller1.signal,
     })
-    
+
     if (timeoutId1) {
       clearTimeout(timeoutId1)
       timeoutId1 = null
     }
-    
+
     if (!finalStatusResponse.ok) {
       throw new Error(`CloudConvert final status check failed: ${finalStatusResponse.statusText}`)
     }
-    
+
     const finalStatusData = await finalStatusResponse.json()
     const exportTask = finalStatusData.data.tasks.find((t: any) => t.operation === "export/url")
     const exportUrl = exportTask?.result?.files?.[0]?.url
@@ -349,22 +349,22 @@ async function convertViaCloudConvert(docxBuffer: Buffer): Promise<Buffer> {
     // Download the PDF with timeout
     let controller2: AbortController | null = null
     let timeoutId2: NodeJS.Timeout | null = null
-    
+
     try {
       controller2 = new AbortController()
       timeoutId2 = setTimeout(() => {
         if (controller2) controller2.abort()
       }, 30000) // 30 second timeout for download
-      
+
       const pdfResponse = await fetch(exportUrl, {
         signal: controller2.signal,
       })
-      
+
       if (timeoutId2) {
         clearTimeout(timeoutId2)
         timeoutId2 = null
       }
-      
+
       if (!pdfResponse.ok) {
         throw new Error(`CloudConvert PDF download failed: ${pdfResponse.statusText}`)
       }
@@ -403,7 +403,7 @@ function cleanFragmentedPlaceholders(zip: PizZip): PizZip {
 
   // Conservative approach: Only fix placeholders that are split across <w:t> tags
   // Template uses {{ }} delimiters, so we need to fix double braces
-  
+
   // Pattern 1: <w:t>{{</w:t>...<w:t>PLACEHOLDER_NAME}}</w:t>
   const splitOpeningPattern = /<w:t[^>]*>\{\{<\/w:t>(?:<[^>]+>)*<w:t[^>]*>([A-Z_]+)\}\}<\/w:t>/g
   xmlContent = xmlContent.replace(splitOpeningPattern, (match, placeholder) => {
@@ -479,17 +479,24 @@ function mapQuestionnairesToTemplateData(questionnaire1: any, questionnaire2?: a
     return num > 0 ? num.toLocaleString("en-AU", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : ""
   }
 
+  // Format as plain rounded number without commas or decimals
+  const formatPlainAmount = (value: any, withDollar = false): string => {
+    const num = Math.round(toNumber(value))
+    if (!num) return ""
+    return withDollar ? `$${num}` : `${num}`
+  }
+
   // Format date to Australian format (DD/MM/YYYY)
   const formatDateAU = (dateValue: any): string => {
     if (!dateValue) return ""
-    
+
     // If already in DD/MM/YYYY format, return as is
     if (typeof dateValue === "string" && /^\d{2}\/\d{2}\/\d{4}$/.test(dateValue)) {
       return dateValue
     }
-    
+
     let date: Date | null = null
-    
+
     // Try to parse the date
     if (typeof dateValue === "string") {
       // Try ISO format (YYYY-MM-DD)
@@ -501,7 +508,7 @@ function mapQuestionnairesToTemplateData(questionnaire1: any, questionnaire2?: a
     } else if (dateValue instanceof Date) {
       date = dateValue
     }
-    
+
     if (!date || isNaN(date.getTime())) {
       // If parsing fails, try to extract date parts from string
       const match = String(dateValue).match(/(\d{4})-(\d{2})-(\d{2})/)
@@ -511,7 +518,7 @@ function mapQuestionnairesToTemplateData(questionnaire1: any, questionnaire2?: a
       }
       return ""
     }
-    
+
     // Format as DD/MM/YYYY
     const day = String(date.getDate()).padStart(2, "0")
     const month = String(date.getMonth() + 1).padStart(2, "0")
@@ -522,7 +529,7 @@ function mapQuestionnairesToTemplateData(questionnaire1: any, questionnaire2?: a
   // Format address: put city/state/postcode on the next line and keep state+postcode together
   const formatAddress = (address: string): string => {
     if (!address) return ""
-    
+
     // Split on the first comma into street and the rest (city/state/postcode)
     const [line1Raw, ...restParts] = address.split(",")
     const line1 = line1Raw?.trim() || ""
@@ -541,22 +548,22 @@ function mapQuestionnairesToTemplateData(questionnaire1: any, questionnaire2?: a
 
   const hoursPerWeek = toNumber(
     merged.hours_per_week ||
-      merged.HOURS_PER_WEEK ||
-      merged.office_hours_per_week ||
-      merged.OFFICE_HOURS_PER_WEEK ||
-      (typeof merged.ss_q48_time === "string" ? merged.ss_q48_time.match(/\d+/)?.[0] : undefined),
+    merged.HOURS_PER_WEEK ||
+    merged.office_hours_per_week ||
+    merged.OFFICE_HOURS_PER_WEEK ||
+    (typeof merged.ss_q48_time === "string" ? merged.ss_q48_time.match(/\d+/)?.[0] : undefined),
   )
   const weeksPerYear = toNumber(merged.weeks_per_year || merged.WEEKS_PER_YEAR || 50)
 
   // Accept incoming total hours if provided by template data (e.g., scenario fixtures)
   const totalHoursProvided = toNumber(
     merged.total_hours ||
-      merged.TOTAL_HOURS ||
-      merged.total_hours_worked ||
-      merged.TOTAL_HOURS_WORKED ||
-      merged.total_number_of_hours_worked ||
-      merged.TOTAL_NUMBER_OF_HOURS_WORKED ||
-      merged.HOURS_PER_YEAR,
+    merged.TOTAL_HOURS ||
+    merged.total_hours_worked ||
+    merged.TOTAL_HOURS_WORKED ||
+    merged.total_number_of_hours_worked ||
+    merged.TOTAL_NUMBER_OF_HOURS_WORKED ||
+    merged.HOURS_PER_YEAR,
   )
 
   const totalHoursNum =
@@ -574,7 +581,7 @@ function mapQuestionnairesToTemplateData(questionnaire1: any, questionnaire2?: a
   const fixedRateDeductionNum = fixedRateDeductionNumBase || toNumber(merged.DEDUCTION_FIXED_RATE || merged.FIXED_RATE_DEDUCTION)
   const fixedRateDeductionSentence =
     totalHoursNum && fixedRateDeductionNum
-      ? `${totalHoursNum} hours × $0.70 = $${Math.round(fixedRateDeductionNum)}`
+      ? `${totalHoursNum} hours × $0.70 = ${formatPlainAmount(fixedRateDeductionNum, true)}`
       : ""
   const bupPercentageNum = toNumber(merged.bup_percentage || merged.business_use_percentage || merged.BUP || 0)
   const runningExpensesBase = toNumber(
@@ -582,8 +589,8 @@ function mapQuestionnairesToTemplateData(questionnaire1: any, questionnaire2?: a
   )
   const runningCostsDeductibleActual = toNumber(
     merged.total_running_costs_deductible ||
-      merged.running_costs_deductible ||
-      (runningExpensesBase && bupPercentageNum ? runningExpensesBase * (bupPercentageNum / 100) : 0),
+    merged.running_costs_deductible ||
+    (runningExpensesBase && bupPercentageNum ? runningExpensesBase * (bupPercentageNum / 100) : 0),
   )
 
   const reportDate = formatDateAU(
@@ -617,7 +624,7 @@ function mapQuestionnairesToTemplateData(questionnaire1: any, questionnaire2?: a
     FIXED_RATE_TOTAL_HOURS: totalHours,
     HOURS_PER_YEAR: totalHours,
     FIXED_RATE_HOURLY_RATE: "$0.70",
-    FIXED_RATE_DEDUCTION: formatCurrency(fixedRateDeductionNum) || "",
+    FIXED_RATE_DEDUCTION: formatPlainAmount(fixedRateDeductionNum, true) || "",
     FIXED_RATE_METHOD_DEDUCTION: formatCurrency(fixedRateDeductionNum) || "",
     RUNNING_COSTS_DEDUCTION_FIXED: formatCurrency(fixedRateDeductionNum) || "",
     RUNNING_COSTS_DEDUCTION: formatCurrency(fixedRateDeductionNum) || "",
@@ -660,9 +667,9 @@ function mapQuestionnairesToTemplateData(questionnaire1: any, questionnaire2?: a
     // Property Expenses - Quick Questionnaire (Q29)
     MORTGAGE_INTEREST: formatCurrency(
       merged.questionnaire_data?.mortgage_interest ||
-        merged.mortgage_interest ||
-        merged.q29_loan_interest ||
-        merged.ss_q44_rent,
+      merged.mortgage_interest ||
+      merged.q29_loan_interest ||
+      merged.ss_q44_rent,
     ) || "",
     COUNCIL_RATES: formatCurrency(
       merged.questionnaire_data?.council_rates || merged.council_rates || merged.q29_council_rates || merged.ss_q44_council,
@@ -694,56 +701,56 @@ function mapQuestionnairesToTemplateData(questionnaire1: any, questionnaire2?: a
     // Deductible Amounts (calculated based on BUP percentage)
     MORTGAGE_INTEREST_DEDUCTIBLE: merged.bup_percentage
       ? formatCurrency(
-          toNumber(merged.questionnaire_data?.mortgage_interest || merged.mortgage_interest || merged.q29_loan_interest) *
-            (toNumber(merged.bup_percentage) / 100),
-        )
+        toNumber(merged.questionnaire_data?.mortgage_interest || merged.mortgage_interest || merged.q29_loan_interest) *
+        (toNumber(merged.bup_percentage) / 100),
+      )
       : "",
     RATES_DEDUCTIBLE: merged.bup_percentage
       ? formatCurrency(
-          toNumber(merged.questionnaire_data?.council_rates || merged.council_rates || merged.q29_council_rates) *
-            (toNumber(merged.bup_percentage) / 100),
-        )
+        toNumber(merged.questionnaire_data?.council_rates || merged.council_rates || merged.q29_council_rates) *
+        (toNumber(merged.bup_percentage) / 100),
+      )
       : "",
     WATER_DEDUCTIBLE: merged.bup_percentage
       ? formatCurrency(
-          toNumber(merged.questionnaire_data?.water_rates || merged.water_rates || merged.q29_water_rates) *
-            (toNumber(merged.bup_percentage) / 100),
-        )
+        toNumber(merged.questionnaire_data?.water_rates || merged.water_rates || merged.q29_water_rates) *
+        (toNumber(merged.bup_percentage) / 100),
+      )
       : "",
     INSURANCE_DEDUCTIBLE: merged.bup_percentage
       ? formatCurrency(
-          toNumber(merged.questionnaire_data?.building_insurance || merged.building_insurance) *
-            (toNumber(merged.bup_percentage) / 100),
-        )
+        toNumber(merged.questionnaire_data?.building_insurance || merged.building_insurance) *
+        (toNumber(merged.bup_percentage) / 100),
+      )
       : "",
     REPAIRS_DEDUCTIBLE: merged.bup_percentage
       ? formatCurrency(
-          toNumber(merged.questionnaire_data?.repairs_maintenance || merged.repairs_maintenance) *
-            (toNumber(merged.bup_percentage) / 100),
-        )
+        toNumber(merged.questionnaire_data?.repairs_maintenance || merged.repairs_maintenance) *
+        (toNumber(merged.bup_percentage) / 100),
+      )
       : "",
     ELECTRICITY_DEDUCTIBLE: merged.bup_percentage
       ? formatCurrency(
-          toNumber(merged.questionnaire_data?.electricity_annual || merged.electricity_annual) *
-            (toNumber(merged.bup_percentage) / 100),
-        )
+        toNumber(merged.questionnaire_data?.electricity_annual || merged.electricity_annual) *
+        (toNumber(merged.bup_percentage) / 100),
+      )
       : "",
     GAS_DEDUCTIBLE: merged.bup_percentage
       ? formatCurrency(
-          toNumber(merged.questionnaire_data?.gas_annual || merged.gas_annual) * (toNumber(merged.bup_percentage) / 100),
-        )
+        toNumber(merged.questionnaire_data?.gas_annual || merged.gas_annual) * (toNumber(merged.bup_percentage) / 100),
+      )
       : "",
     CLEANING_DEDUCTIBLE: merged.bup_percentage
       ? formatCurrency(
-          toNumber(merged.questionnaire_data?.cleaning_annual || merged.cleaning_annual) *
-            (toNumber(merged.bup_percentage) / 100),
-        )
+        toNumber(merged.questionnaire_data?.cleaning_annual || merged.cleaning_annual) *
+        (toNumber(merged.bup_percentage) / 100),
+      )
       : "",
     DEPRECIATION_DEDUCTIBLE: merged.bup_percentage
       ? formatCurrency(
-          toNumber(merged.questionnaire_data?.depreciation || merged.depreciation || merged.q29_equipment_depreciation) *
-            (toNumber(merged.bup_percentage) / 100),
-        )
+        toNumber(merged.questionnaire_data?.depreciation || merged.depreciation || merged.q29_equipment_depreciation) *
+        (toNumber(merged.bup_percentage) / 100),
+      )
       : "",
 
     // Strategy Information
@@ -871,11 +878,15 @@ function mapQuestionnairesToTemplateData(questionnaire1: any, questionnaire2?: a
     TOTAL_WEEKLY_HOURS_WORKED: merged.hours_per_week?.toString() || "",
     TOTAL_NUMBER_OF_WEEKS_WORKED: merged.weeks_per_year?.toString() || "52",
     TOTAL_NUMBER_OF_HOURS_WORKED: totalHours,
-    TOTAL_FIXED_RATE_METHOD_CLAIM: formatCurrency(
+    TOTAL_FIXED_RATE_METHOD_CLAIM: formatPlainAmount(
       merged.total_fixed_rate_method_claim || merged.TOTAL_FIXED_RATE_METHOD_CLAIM || fixedRateDeductionNum,
+      true,
     ) || "",
     "TOTAL_CLAIM_ PER_ THE_RUNNING_COST_METHOD": merged.total_claim_per_running_cost_method || merged.TOTAL_CLAIM_PER_RUNNING_COST_METHOD || "",
-    "TOTAL_CLAIM_ PER_ THE_FIXED_COST_METHOD": merged.total_claim_per_fixed_cost_method || merged.TOTAL_CLAIM_PER_FIXED_COST_METHOD || "",
+    "TOTAL_CLAIM_ PER_ THE_FIXED_COST_METHOD": formatPlainAmount(
+      merged.total_claim_per_fixed_cost_method || merged.TOTAL_CLAIM_PER_FIXED_COST_METHOD || fixedRateDeductionNum,
+      true,
+    ) || "",
     BEST_METHOD_COMPARISON: merged.best_method_comparison || "",
     RECOMMENDED_METHOD: merged.recommended_method || merged.strategy_name || merged.strategy || "",
     TOTAL_PROPERTY_DEDUCTIBLE: merged.total_property_deductible || "",
