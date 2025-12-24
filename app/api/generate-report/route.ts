@@ -659,9 +659,27 @@ function mapQuestionnairesToTemplateData(questionnaire1: any, questionnaire2?: a
   const repairsDeductibleNum = repairsMaintenance && bupPercentageNum ? repairsMaintenance * (bupPercentageNum / 100) : 0
   const depreciationDeductibleNum = buildingDepreciation && bupPercentageNum ? buildingDepreciation * (bupPercentageNum / 100) : 0
 
-  // Total deductible = property deductible + running costs deductible
-  const totalDeductibleNum = totalPropertyDeductibleNum + runningCostsDeductibleActual
+  // Calculate individual running expense amounts (for table)
+  const electricityAmount = toNumber(merged.questionnaire_data?.electricity_annual || merged.electricity_annual || merged.ELECTRICITY || merged.electricity || 0)
+  const gasAmount = toNumber(merged.questionnaire_data?.gas_annual || merged.gas_annual || merged.GAS || merged.gas || 0)
+  const cleaningAmount = toNumber(merged.questionnaire_data?.cleaning_annual || merged.cleaning_annual || merged.CLEANING || merged.cleaning || 0)
+  
+  // Total running expenses for table = only ELECTRICITY + GAS + CLEANING
+  const totalRunningExpensesForTable = electricityAmount + gasAmount + cleaningAmount
+  
+  // Calculate individual running expense deductibles
+  const electricityDeductibleNum = electricityAmount && bupPercentageNum ? electricityAmount * (bupPercentageNum / 100) : 0
+  const gasDeductibleNum = gasAmount && bupPercentageNum ? gasAmount * (bupPercentageNum / 100) : 0
+  const cleaningDeductibleNum = cleaningAmount && bupPercentageNum ? cleaningAmount * (bupPercentageNum / 100) : 0
+  
+  // Total running expenses deductible for table = only ELECTRICITY_DEDUCTIBLE + GAS_DEDUCTIBLE + CLEANING_DEDUCTIBLE
+  const totalRunningExpensesDeductibleForTable = electricityDeductibleNum + gasDeductibleNum + cleaningDeductibleNum
+  
+  // Total property deductible for table = sum of all property expense deductibles
+  const totalPropertyDeductibleForTable = mortgageDeductibleNum + ratesDeductibleNum + waterDeductibleNum + insuranceDeductibleNum + repairsDeductibleNum + depreciationDeductibleNum
 
+  // Total deductible = property deductible + running costs deductible (overall total)
+  const totalDeductibleNum = totalPropertyDeductibleNum + runningCostsDeductibleActual
   // Determine which running method is better
   let runningMethod = merged.running_method || merged.RUNNING_METHOD || ""
   if (!runningMethod && runningCostsDeductibleActual > 0 && fixedRateDeductionNum > 0) {
@@ -801,7 +819,6 @@ function mapQuestionnairesToTemplateData(questionnaire1: any, questionnaire2?: a
     PARTNER_INCOME: formatCurrency(merged.q3_partner_income || merged.partner_income) || "",
     MORTGAGE_BALANCE: formatCurrency(merged.mortgage_balance) || "",
     PROPERTY_VALUE: formatCurrency(merged.property_value || merged.q11_home_value || merged.home_value) || "",
-    BUILDING_VALUE: formatCurrency(merged.building_value) || "",
     BUP_PERCENTAGE: merged.bup_percentage?.toString() || "",
     PERSONAL_DEBTS: formatCurrency(merged.q12_personal_debts || merged.personal_debts) || "",
     PARTNER_DEBTS: formatCurrency(merged.q13_partner_debts || merged.partner_debts) || "",
@@ -860,23 +877,9 @@ function mapQuestionnairesToTemplateData(questionnaire1: any, questionnaire2?: a
     WATER_DEDUCTIBLE: formatCurrency(waterDeductibleNum) || "",
     INSURANCE_DEDUCTIBLE: formatCurrency(insuranceDeductibleNum) || "",
     REPAIRS_DEDUCTIBLE: formatCurrency(repairsDeductibleNum) || "",
-    ELECTRICITY_DEDUCTIBLE: merged.bup_percentage
-      ? formatCurrency(
-        toNumber(merged.questionnaire_data?.electricity_annual || merged.electricity_annual) *
-        (toNumber(merged.bup_percentage) / 100),
-      )
-      : "",
-    GAS_DEDUCTIBLE: merged.bup_percentage
-      ? formatCurrency(
-        toNumber(merged.questionnaire_data?.gas_annual || merged.gas_annual) * (toNumber(merged.bup_percentage) / 100),
-      )
-      : "",
-    CLEANING_DEDUCTIBLE: merged.bup_percentage
-      ? formatCurrency(
-        toNumber(merged.questionnaire_data?.cleaning_annual || merged.cleaning_annual) *
-        (toNumber(merged.bup_percentage) / 100),
-      )
-      : "",
+    ELECTRICITY_DEDUCTIBLE: formatCurrency(electricityDeductibleNum) || "",
+    GAS_DEDUCTIBLE: formatCurrency(gasDeductibleNum) || "",
+    CLEANING_DEDUCTIBLE: formatCurrency(cleaningDeductibleNum) || "",
     DEPRECIATION_DEDUCTIBLE: formatCurrency(depreciationDeductibleNum) || "",
 
     // Strategy Information
@@ -990,8 +993,8 @@ function mapQuestionnairesToTemplateData(questionnaire1: any, questionnaire2?: a
     WATER: formatCurrency(waterRates) || "",
     TOTAL_PROPERTY_EXPENSES: formatCurrency(propertyExpensesTotal) || "",
     TOTAL_DEDUCTIBLE: formatCurrency(totalDeductibleNum) || "",
-    TOTAL_RUNNING_EXPENSES: formatCurrency(runningExpensesBase) || "",
-    TOTAL_RUNNING_EXPENSES_DEDUCTIBLE: formatCurrency(runningCostsDeductibleActual) || "", // Running expenses deductible for the running expenses table
+    TOTAL_RUNNING_EXPENSES: formatCurrency(totalRunningExpensesForTable) || "", // Sum of only ELECTRICITY + GAS + CLEANING for table
+    TOTAL_RUNNING_EXPENSES_DEDUCTIBLE: formatCurrency(totalRunningExpensesDeductibleForTable) || "", // Sum of only ELECTRICITY_DEDUCTIBLE + GAS_DEDUCTIBLE + CLEANING_DEDUCTIBLE for table
     TOTAL_HABITABLE_FLOOR_AREA: totalHabitableFloorAreaNum > 0 ? `${totalHabitableFloorAreaNum} m²` : "",
     HOME_OFFICE_FLOOR_AREA: homeOfficeAreaNum > 0 ? `${homeOfficeAreaNum} m²` : "",
     MEETING_AREA_FLOOR_AREA: meetingAreaNum > 0 ? `${meetingAreaNum} m²` : "",
@@ -1019,7 +1022,7 @@ function mapQuestionnairesToTemplateData(questionnaire1: any, questionnaire2?: a
     ) || "",
     BEST_METHOD_COMPARISON: merged.best_method_comparison || merged.BEST_METHOD_COMPARISON || bestMethodComparison || "",
     RECOMMENDED_METHOD: merged.recommended_method || merged.strategy_name || merged.strategy || "",
-    TOTAL_PROPERTY_DEDUCTIBLE: formatCurrency(totalPropertyDeductibleNum) || "",
+    TOTAL_PROPERTY_DEDUCTIBLE: formatCurrency(totalPropertyDeductibleForTable) || "", // Sum of MORTGAGE_DEDUCTIBLE + RATES_DEDUCTIBLE + WATER_DEDUCTIBLE + INSURANCE_DEDUCTIBLE + REPAIRS_DEDUCTIBLE + DEPRECIATION_DEDUCTIBLE
     RUNNING_METHOD: runningMethod || "",
     RUNNING_EXPENSES_DEDUCTION: formatCurrency(runningCostsDeductibleActual) || "", // Deduction amount for running expenses in summary table
     TOTAL_ANNUAL_DEDUCTION: formatCurrency(totalAnnualDeductionNum) || "",
@@ -1048,7 +1051,7 @@ function mapQuestionnairesToTemplateData(questionnaire1: any, questionnaire2?: a
     "Total Property Expenses": formatCurrency(toNumber(merged.total_property_expenses || propertyExpensesTotal)) || "",
     TOTAL_PROPERTY_EXPENSES_ALIAS: formatCurrency(toNumber(merged.total_property_expenses || propertyExpensesTotal)) || "",
     TOTAL_DEDUCTIBLE_ALIAS: formatCurrency(toNumber(merged.total_deductible || totalDeductibleNum)) || "",
-    TOTAL_RUNNING_EXPENSES_ALIAS: formatCurrency(toNumber(merged.total_running_expenses || runningExpensesBase)) || "",
+    TOTAL_RUNNING_EXPENSES_ALIAS: formatCurrency(toNumber(merged.total_running_expenses || totalRunningExpensesForTable)) || "",
     TOTAL_BUSINESS_USE_FLOOR_AREA_ALIAS: totalBusinessUseFloorAreaNum > 0 ? `${totalBusinessUseFloorAreaNum} m²` : "",
     TOTAL_HABITABLE_FLOOR_AREA_ALIAS: totalHabitableFloorAreaNum > 0 ? `${totalHabitableFloorAreaNum} m²` : "",
     BUSINESS_USE_PERCENTAGE_ALIAS: businessUsePercentageDisplay || "",
@@ -1071,6 +1074,9 @@ function mapQuestionnairesToTemplateData(questionnaire1: any, questionnaire2?: a
       ]),
     ),
     ...merged,
+    
+    // Override with formatted values to ensure proper formatting (these come last so they override any raw values from merged)
+    BUILDING_VALUE: formatCurrency(buildingValue) || "",
   }
 }
 
