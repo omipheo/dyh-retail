@@ -651,6 +651,17 @@ function mapQuestionnairesToTemplateData(questionnaire1: any, questionnaire2?: a
   const totalPropertyDeductibleNum = toNumber(merged.total_property_deductible || merged.TOTAL_PROPERTY_DEDUCTIBLE || 0) ||
     propertyDeductibleCalculated
 
+  // Calculate individual deductibles
+  const mortgageDeductibleNum = mortgageInterest && bupPercentageNum ? mortgageInterest * (bupPercentageNum / 100) : 0
+  const ratesDeductibleNum = councilRates && bupPercentageNum ? councilRates * (bupPercentageNum / 100) : 0
+  const waterDeductibleNum = waterRates && bupPercentageNum ? waterRates * (bupPercentageNum / 100) : 0
+  const insuranceDeductibleNum = buildingInsurance && bupPercentageNum ? buildingInsurance * (bupPercentageNum / 100) : 0
+  const repairsDeductibleNum = repairsMaintenance && bupPercentageNum ? repairsMaintenance * (bupPercentageNum / 100) : 0
+  const depreciationDeductibleNum = buildingDepreciation && bupPercentageNum ? buildingDepreciation * (bupPercentageNum / 100) : 0
+
+  // Total deductible = property deductible + running costs deductible
+  const totalDeductibleNum = totalPropertyDeductibleNum + runningCostsDeductibleActual
+
   // Determine which running method is better
   let runningMethod = merged.running_method || merged.RUNNING_METHOD || ""
   if (!runningMethod && runningCostsDeductibleActual > 0 && fixedRateDeductionNum > 0) {
@@ -824,16 +835,14 @@ function mapQuestionnairesToTemplateData(questionnaire1: any, questionnaire2?: a
     WATER_RATES: formatCurrency(
       merged.questionnaire_data?.water_rates || merged.water_rates || merged.q29_water_rates || merged.ss_q44_water,
     ) || "",
-    BUILDING_INSURANCE: formatCurrency(merged.questionnaire_data?.building_insurance || merged.building_insurance) || "",
-    INSURANCE: formatCurrency(merged.questionnaire_data?.building_insurance || merged.building_insurance) || "",
-    REPAIRS_MAINTENANCE: formatCurrency(merged.questionnaire_data?.repairs_maintenance || merged.repairs_maintenance) || "",
-    REPAIRS: formatCurrency(merged.questionnaire_data?.repairs_maintenance || merged.repairs_maintenance) || "",
+    BUILDING_INSURANCE: formatCurrency(buildingInsurance) || "",
+    INSURANCE: formatCurrency(buildingInsurance) || "",
+    REPAIRS_MAINTENANCE: formatCurrency(repairsMaintenance) || "",
+    REPAIRS: formatCurrency(repairsMaintenance) || "",
     ELECTRICITY: formatCurrency(merged.questionnaire_data?.electricity_annual || merged.electricity_annual) || "",
     GAS: formatCurrency(merged.questionnaire_data?.gas_annual || merged.gas_annual) || "",
     CLEANING: formatCurrency(merged.questionnaire_data?.cleaning_annual || merged.cleaning_annual) || "",
-    DEPRECIATION: formatCurrency(
-      merged.questionnaire_data?.depreciation || merged.depreciation || merged.q29_equipment_depreciation || merged.ss_q44_equipment_depreciation,
-    ) || "",
+    DEPRECIATION: formatCurrency(buildingDepreciation) || "",
     LAND_TAX: formatCurrency(merged.q29_land_tax || merged.ss_q44_land_tax) || "",
     ADVERTISING: formatCurrency(merged.q29_advertising || merged.ss_q44_advertising) || "",
     EQUIPMENT_LEASE: formatCurrency(merged.q29_equipment_lease || merged.ss_q44_equipment_lease) || "",
@@ -846,36 +855,11 @@ function mapQuestionnairesToTemplateData(questionnaire1: any, questionnaire2?: a
     RENT_ANNUAL: formatCurrency(merged.q29_rent_annual || merged.ss_q44_rent || merged.annual_premises_cost) || "",
 
     // Deductible Amounts (calculated based on BUP percentage)
-    MORTGAGE_INTEREST_DEDUCTIBLE: merged.bup_percentage
-      ? formatCurrency(
-        toNumber(merged.questionnaire_data?.mortgage_interest || merged.mortgage_interest || merged.q29_loan_interest) *
-        (toNumber(merged.bup_percentage) / 100),
-      )
-      : "",
-    RATES_DEDUCTIBLE: merged.bup_percentage
-      ? formatCurrency(
-        toNumber(merged.questionnaire_data?.council_rates || merged.council_rates || merged.q29_council_rates) *
-        (toNumber(merged.bup_percentage) / 100),
-      )
-      : "",
-    WATER_DEDUCTIBLE: merged.bup_percentage
-      ? formatCurrency(
-        toNumber(merged.questionnaire_data?.water_rates || merged.water_rates || merged.q29_water_rates) *
-        (toNumber(merged.bup_percentage) / 100),
-      )
-      : "",
-    INSURANCE_DEDUCTIBLE: merged.bup_percentage
-      ? formatCurrency(
-        toNumber(merged.questionnaire_data?.building_insurance || merged.building_insurance) *
-        (toNumber(merged.bup_percentage) / 100),
-      )
-      : "",
-    REPAIRS_DEDUCTIBLE: merged.bup_percentage
-      ? formatCurrency(
-        toNumber(merged.questionnaire_data?.repairs_maintenance || merged.repairs_maintenance) *
-        (toNumber(merged.bup_percentage) / 100),
-      )
-      : "",
+    MORTGAGE_INTEREST_DEDUCTIBLE: formatCurrency(mortgageDeductibleNum) || "",
+    RATES_DEDUCTIBLE: formatCurrency(ratesDeductibleNum) || "",
+    WATER_DEDUCTIBLE: formatCurrency(waterDeductibleNum) || "",
+    INSURANCE_DEDUCTIBLE: formatCurrency(insuranceDeductibleNum) || "",
+    REPAIRS_DEDUCTIBLE: formatCurrency(repairsDeductibleNum) || "",
     ELECTRICITY_DEDUCTIBLE: merged.bup_percentage
       ? formatCurrency(
         toNumber(merged.questionnaire_data?.electricity_annual || merged.electricity_annual) *
@@ -893,12 +877,7 @@ function mapQuestionnairesToTemplateData(questionnaire1: any, questionnaire2?: a
         (toNumber(merged.bup_percentage) / 100),
       )
       : "",
-    DEPRECIATION_DEDUCTIBLE: merged.bup_percentage
-      ? formatCurrency(
-        toNumber(merged.questionnaire_data?.depreciation || merged.depreciation || merged.q29_equipment_depreciation) *
-        (toNumber(merged.bup_percentage) / 100),
-      )
-      : "",
+    DEPRECIATION_DEDUCTIBLE: formatCurrency(depreciationDeductibleNum) || "",
 
     // Strategy Information
     RECOMMENDED_STRATEGY: merged.strategy_name || merged.strategy || "",
@@ -1003,15 +982,16 @@ function mapQuestionnairesToTemplateData(questionnaire1: any, questionnaire2?: a
     DEDICATED_MEETING_AREA_M2: merged.dedicated_meeting_area_m2 || "",
     DEDICATED_ARCHIVE_AREA_M2: merged.dedicated_archive_area_m2 || "",
     TOTAL_BUSINESS_USE_AREA_M2: merged.business_floor_space_sqm || merged.q17_business_floor_space || "",
-    MORTGAGE: merged.mortgage_balance || merged.mortgage || "",
+    MORTGAGE: formatCurrency(mortgageInterest) || "",
     BUP: businessUsePercentageNum > 0 ? businessUsePercentageNum.toString() : "", // Without % for templates that add it
     BUP_WITH_PERCENT: businessUsePercentageDisplay || "", // With % for templates that don't add it
-    MORTGAGE_DEDUCTIBLE: merged.mortgage_interest_deductible || "",
-    RATES: merged.council_rates || merged.q29_council_rates || "",
-    WATER: merged.water_rates || merged.q29_water_rates || "",
-    TOTAL_PROPERTY_EXPENSES: merged.total_property_expenses || "",
-    TOTAL_DEDUCTIBLE: merged.total_deductible || "",
-    TOTAL_RUNNING_EXPENSES: merged.total_running_expenses || "",
+    MORTGAGE_DEDUCTIBLE: formatCurrency(mortgageDeductibleNum) || "",
+    RATES: formatCurrency(councilRates) || "",
+    WATER: formatCurrency(waterRates) || "",
+    TOTAL_PROPERTY_EXPENSES: formatCurrency(propertyExpensesTotal) || "",
+    TOTAL_DEDUCTIBLE: formatCurrency(totalDeductibleNum) || "",
+    TOTAL_RUNNING_EXPENSES: formatCurrency(runningExpensesBase) || "",
+    TOTAL_RUNNING_EXPENSES_DEDUCTIBLE: formatCurrency(runningCostsDeductibleActual) || "", // Running expenses deductible for the running expenses table
     TOTAL_HABITABLE_FLOOR_AREA: totalHabitableFloorAreaNum > 0 ? totalHabitableFloorAreaNum.toString() : "",
     HOME_OFFICE_FLOOR_AREA: homeOfficeAreaNum > 0 ? homeOfficeAreaNum.toString() : "",
     MEETING_AREA_FLOOR_AREA: meetingAreaNum > 0 ? meetingAreaNum.toString() : "",
