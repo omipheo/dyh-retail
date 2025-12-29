@@ -691,13 +691,18 @@ function mapQuestionnairesToTemplateData(questionnaire1: any, questionnaire2?: a
     runningMethod = totalRunningExpensesDeductibleForTable > fixedRateDeductionNum ? "Actual Cost Method" : "Fixed Rate Method"
   }
 
-  // Total annual deduction = property deductible + running costs deductible
+  // Calculate running method deductible (numeric value for calculation)
+  const runningMethodDeductibleNum = runningMethod === "Actual Cost Method"
+    ? totalRunningExpensesDeductibleForTable
+    : runningMethod === "Fixed Rate Method"
+    ? fixedRateDeductionNum
+    : (totalRunningExpensesDeductibleForTable || fixedRateDeductionNum)
+
+  // Total annual deduction = TOTAL_PROPERTY_DEDUCTIBLE + RUNNING_METHOD_DEDUCTIBLE
   const totalAnnualDeductionNum = toNumber(
     merged.total_annual_deduction ||
       merged.TOTAL_ANNUAL_DEDUCTION ||
-      (totalPropertyDeductibleNum || runningCostsDeductibleActual
-        ? totalPropertyDeductibleNum + runningCostsDeductibleActual
-        : 0),
+      (totalPropertyDeductibleForTable + runningMethodDeductibleNum),
   )
 
   // Actual cost method sentence (e.g., "$1200 × 30% = $360")
@@ -789,7 +794,6 @@ function mapQuestionnairesToTemplateData(questionnaire1: any, questionnaire2?: a
   // Use provided BUP (already rounded) or calculated BUP (already rounded), then ensure final value is rounded
   const businessUsePercentageNum = Math.round(bupPercentageNum || calculatedBUP)
   const businessUsePercentageDisplay = businessUsePercentageNum > 0 ? `${businessUsePercentageNum}%` : ""
-
   // Map all fields from both questionnaires to template placeholders
   return {
     // Client Information
@@ -993,7 +997,7 @@ function mapQuestionnairesToTemplateData(questionnaire1: any, questionnaire2?: a
     DEDICATED_ARCHIVE_AREA_M2: archiveAreaNum > 0 ? `${archiveAreaNum} m²` : "",
     TOTAL_BUSINESS_USE_AREA_M2: totalBusinessUseFloorAreaNum > 0 ? `${totalBusinessUseFloorAreaNum} m²` : "",
     MORTGAGE: formatCurrency(mortgageInterest) || "",
-    BUP: businessUsePercentageDisplay || "", // With % sign for Business Use column
+    BUP: businessUsePercentageNum > 0 ? businessUsePercentageNum.toString() : "", // Without % sign (template adds it)
     BUP_WITH_PERCENT: businessUsePercentageDisplay || "", // With % for templates that don't add it
     MORTGAGE_DEDUCTIBLE: formatCurrency(mortgageDeductibleNum) || "",
     RATES: formatCurrency(councilRates) || "",
@@ -1089,6 +1093,16 @@ function mapQuestionnairesToTemplateData(questionnaire1: any, questionnaire2?: a
     
     // Override with formatted values to ensure proper formatting (these come last so they override any raw values from merged)
     BUILDING_VALUE: formatCurrency(buildingValue) || "",
+    BUSINESS_TYPE: (() => {
+      const businessType = merged.business_type || merged.CLIENT_BUSINESS_TYPE || merged.BUSINESS_TYPE || ""
+      if (!businessType) return ""
+      // Add "business" at the end if not already present
+      const lowerType = businessType.toLowerCase().trim()
+      if (lowerType.endsWith("business")) {
+        return businessType
+      }
+      return `${businessType} business`
+    })(),
   }
 }
 
