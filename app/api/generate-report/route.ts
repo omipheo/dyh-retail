@@ -1,9 +1,8 @@
 import PizZip from "pizzip"
 import Docxtemplater from "docxtemplater"
 import { type NextRequest, NextResponse } from "next/server"
-import { readFileSync, writeFileSync, unlinkSync } from "fs"
+import { readFileSync } from "fs"
 import { join } from "path"
-import { tmpdir } from "os"
 
 // Use the final_report.docx template (required)
 const TEMPLATE_PATH = join(process.cwd(), "public", "templates", "final_report.docx")
@@ -23,16 +22,22 @@ function getTemplatePath(): string {
 async function convertDocxToPdf(docxBuffer: Buffer): Promise<Buffer> {
   const fs = require("fs")
   const path = require("path")
-
-  // Add timeout wrapper
-  const withTimeout = async <T>(promise: Promise<T>, timeoutMs: number, errorMessage: string): Promise<T> => {
-    return Promise.race([
+  \
+  const withTimeout = async <T>(promise: Promise<T>, timeoutMs: number, errorMessage: string)
+  : Promise<T> =>
+    Promise.race([
       promise,
       new Promise<T>((_, reject) =>
-        setTimeout(() => reject(new Error(`${errorMessage} (timeout after ${timeoutMs}ms)`)), timeoutMs),
+        setTimeout(() => reject(new Error(\`$
+  errorMessage
+  (timeout
+  after
+  $
+  timeoutMs
+  ms
+  )`)), timeoutMs)
       ),
     ])
-  }
 
   // Skip docx-pdf entirely - it tries to use html-pdf/PhantomJS which crashes the server
   // Go straight to CloudConvert or DOCX fallback
@@ -103,7 +108,7 @@ async function convertViaCloudConvert(docxBuffer: Buffer): Promise<Buffer> {
     try {
       const errorData = JSON.parse(errorText)
       errorMessage = errorData?.message || errorMessage
-    } catch { }
+    } catch {}
     throw new Error(`CloudConvert job creation failed: ${jobResponse.status} ${errorMessage} ${errorText}`)
   }
 
@@ -184,7 +189,7 @@ async function convertViaCloudConvert(docxBuffer: Buffer): Promise<Buffer> {
       try {
         if (req && !req.destroyed) req.destroy()
         if (form && typeof form.destroy === "function") form.destroy()
-      } catch { }
+      } catch {}
     }
 
     const safeResolve = () => {
@@ -395,19 +400,17 @@ function cleanFragmentedPlaceholders(zip: PizZip): PizZip {
   let xmlContent = documentXml.asText()
   console.log("[v0] 📄 Original XML length:", xmlContent.length)
 
-  // Count placeholders before cleaning (using double braces {{ }})
-  const beforeMatches = xmlContent.match(/\{\{[^{}]*\}\}/g) || []
+  // Count placeholders before cleaning (template uses double braces)
+  const beforePattern = /\{\{[^{}]*\}\}/g
+  const beforeMatches = xmlContent.match(beforePattern) || []
   console.log("[v0] 📊 Placeholders before cleaning:", beforeMatches.length)
 
   let totalReplacements = 0
 
-  // Conservative approach: Only fix placeholders that are split across <w:t> tags
-  // Template uses {{ }} delimiters, so we need to fix double braces
-
-  // Pattern 1: <w:t>{{</w:t>...<w:t>PLACEHOLDER_NAME}}</w:t>
+  // Pattern 1: Fix split opening - <w:t>{{</w:t>...<w:t>PLACEHOLDER_NAME}}</w:t>
   const splitOpeningPattern = /<w:t[^>]*>\{\{<\/w:t>(?:<[^>]+>)*<w:t[^>]*>([A-Z_]+)\}\}<\/w:t>/g
   xmlContent = xmlContent.replace(splitOpeningPattern, (match, placeholder) => {
-      totalReplacements++
+    totalReplacements++
     const cleaned = `<w:t>{{${placeholder}}}</w:t>`
     if (totalReplacements <= 10) {
       console.log(`[v0] 🔧 Fixed split opening: {{${placeholder}}}`)
@@ -415,7 +418,7 @@ function cleanFragmentedPlaceholders(zip: PizZip): PizZip {
     return cleaned
   })
 
-  // Pattern 2: <w:t>{{PLACEHOLDER_NAME</w:t>...<w:t>}}</w:t>
+  // Pattern 2: Fix split closing - <w:t>{{PLACEHOLDER_NAME</w:t>...<w:t>}}</w:t>
   const splitClosingPattern = /<w:t[^>]*>\{\{([A-Z_]+)<\/w:t>(?:<[^>]+>)*<w:t[^>]*>\}\}<\/w:t>/g
   xmlContent = xmlContent.replace(splitClosingPattern, (match, placeholder) => {
     totalReplacements++
@@ -423,10 +426,10 @@ function cleanFragmentedPlaceholders(zip: PizZip): PizZip {
     if (totalReplacements <= 10) {
       console.log(`[v0] 🔧 Fixed split closing: {{${placeholder}}}`)
     }
-      return cleaned
+    return cleaned
   })
 
-  // Pattern 3: More complex splits - {{PLACEHOLDER</w:t>...<w:t>_NAME}}
+  // Pattern 3: Fix complex splits - {{PLACEHOLDER</w:t>...<w:t>_NAME}}
   const complexSplitPattern = /<w:t[^>]*>\{\{([A-Z_]*?)<\/w:t>(?:<[^>]+>)*<w:t[^>]*>([A-Z_]+)\}\}<\/w:t>/g
   xmlContent = xmlContent.replace(complexSplitPattern, (match, part1, part2) => {
     totalReplacements++
@@ -437,8 +440,9 @@ function cleanFragmentedPlaceholders(zip: PizZip): PizZip {
     return cleaned
   })
 
-  // Pattern 4: Handle cases where {{ is split: <w:t>{{</w:t><w:t>PLACEHOLDER</w:t><w:t>}}</w:t>
-  const splitBothPattern = /<w:t[^>]*>\{\{<\/w:t>(?:<[^>]+>)*<w:t[^>]*>([A-Z_]+)<\/w:t>(?:<[^>]+>)*<w:t[^>]*>\}\}<\/w:t>/g
+  // Pattern 4: Fix cases where both braces are split - <w:t>{{</w:t><w:t>PLACEHOLDER</w:t><w:t>}}</w:t>
+  const splitBothPattern =
+    /<w:t[^>]*>\{\{<\/w:t>(?:<[^>]+>)*<w:t[^>]*>([A-Z_]+)<\/w:t>(?:<[^>]+>)*<w:t[^>]*>\}\}<\/w:t>/g
   xmlContent = xmlContent.replace(splitBothPattern, (match, placeholder) => {
     totalReplacements++
     const cleaned = `<w:t>{{${placeholder}}}</w:t>`
@@ -449,7 +453,7 @@ function cleanFragmentedPlaceholders(zip: PizZip): PizZip {
   })
 
   // Count placeholders after cleaning
-  const afterMatches = xmlContent.match(/\{\{[^{}]*\}\}/g) || []
+  const afterMatches = xmlContent.match(beforePattern) || []
   console.log("[v0] 📊 Placeholders after cleaning:", afterMatches.length)
   console.log("[v0] ✅ Total XML fragments healed:", totalReplacements)
   console.log("[v0] 📄 Cleaned XML length:", xmlContent.length)
@@ -468,7 +472,7 @@ function mapQuestionnairesToTemplateData(questionnaire1: any, questionnaire2?: a
   const toNumber = (value: any): number => {
     if (typeof value === "number") return value
     if (typeof value === "string") {
-      const parsed = parseFloat(value.replace(/[^0-9.-]/g, ""))
+      const parsed = Number.parseFloat(value.replace(/[^0-9.-]/g, ""))
       return isNaN(parsed) ? 0 : parsed
     }
     return 0
@@ -548,37 +552,32 @@ function mapQuestionnairesToTemplateData(questionnaire1: any, questionnaire2?: a
 
   const hoursPerWeek = toNumber(
     merged.hours_per_week ||
-    merged.HOURS_PER_WEEK ||
-    merged.office_hours_per_week ||
-    merged.OFFICE_HOURS_PER_WEEK ||
-    (typeof merged.ss_q48_time === "string" ? merged.ss_q48_time.match(/\d+/)?.[0] : undefined),
+      merged.HOURS_PER_WEEK ||
+      merged.office_hours_per_week ||
+      merged.OFFICE_HOURS_PER_WEEK ||
+      (typeof merged.ss_q48_time === "string" ? merged.ss_q48_time.match(/\d+/)?.[0] : undefined),
   )
   const weeksPerYear = toNumber(merged.weeks_per_year || merged.WEEKS_PER_YEAR || 50)
 
   // Accept incoming total hours if provided by template data (e.g., scenario fixtures)
   const totalHoursProvided = toNumber(
     merged.total_hours ||
-    merged.TOTAL_HOURS ||
-    merged.total_hours_worked ||
-    merged.TOTAL_HOURS_WORKED ||
-    merged.total_number_of_hours_worked ||
-    merged.TOTAL_NUMBER_OF_HOURS_WORKED ||
-    merged.HOURS_PER_YEAR,
+      merged.TOTAL_HOURS ||
+      merged.total_hours_worked ||
+      merged.TOTAL_HOURS_WORKED ||
+      merged.total_number_of_hours_worked ||
+      merged.TOTAL_NUMBER_OF_HOURS_WORKED ||
+      merged.HOURS_PER_YEAR,
   )
 
   const totalHoursNum =
-    totalHoursProvided > 0
-      ? totalHoursProvided
-      : hoursPerWeek && weeksPerYear
-        ? hoursPerWeek * weeksPerYear
-        : 0
-
-  const totalHours = totalHoursNum ? totalHoursNum.toString() : ""
+    totalHoursProvided > 0 ? totalHoursProvided : hoursPerWeek && weeksPerYear ? hoursPerWeek * weeksPerYear : 0
 
   // Fixed rate method (ATO rate $0.70/hour as per template)
   const FIXED_RATE_PER_HOUR = 0.7
   const fixedRateDeductionNumBase = totalHoursNum ? totalHoursNum * FIXED_RATE_PER_HOUR : 0
-  const fixedRateDeductionNum = fixedRateDeductionNumBase || toNumber(merged.DEDUCTION_FIXED_RATE || merged.FIXED_RATE_DEDUCTION)
+  const fixedRateDeductionNum =
+    fixedRateDeductionNumBase || toNumber(merged.DEDUCTION_FIXED_RATE || merged.FIXED_RATE_DEDUCTION)
   const fixedRateDeductionSentence =
     totalHoursNum && fixedRateDeductionNum
       ? `${totalHoursNum} hours × $0.70 = ${formatPlainAmount(fixedRateDeductionNum, true)}`
@@ -586,47 +585,69 @@ function mapQuestionnairesToTemplateData(questionnaire1: any, questionnaire2?: a
   // Get BUP percentage and round to nearest whole number (as per business rule)
   const bupPercentageRaw = toNumber(merged.bup_percentage || merged.business_use_percentage || merged.BUP || 0)
   const bupPercentageNum = bupPercentageRaw > 0 ? Math.round(bupPercentageRaw) : 0
-  
+
   // Derive running expenses: prefer provided total, else auto-sum common running expense fields
   const runningExpenseItems = [
-    merged.electricity_annual || merged.questionnaire_data?.electricity_annual || merged.ELECTRICITY || merged.electricity || 0,
+    merged.electricity_annual ||
+      merged.questionnaire_data?.electricity_annual ||
+      merged.ELECTRICITY ||
+      merged.electricity ||
+      0,
     merged.gas_annual || merged.questionnaire_data?.gas_annual || merged.GAS || merged.gas || 0,
     merged.cleaning_annual || merged.questionnaire_data?.cleaning_annual || merged.CLEANING || merged.cleaning || 0,
     merged.security_annual || merged.questionnaire_data?.security_annual || merged.SECURITY || merged.security || 0,
     merged.phone_annual || merged.questionnaire_data?.phone_annual || merged.PHONE || merged.phone || 0,
     merged.internet_annual || merged.questionnaire_data?.internet_annual || merged.INTERNET || merged.internet || 0,
-    merged.heating_cooling_annual || merged.questionnaire_data?.heating_cooling_annual || merged.HEATING_COOLING || merged.heating_cooling || 0,
+    merged.heating_cooling_annual ||
+      merged.questionnaire_data?.heating_cooling_annual ||
+      merged.HEATING_COOLING ||
+      merged.heating_cooling ||
+      0,
   ].map(toNumber)
-  
+
   const runningExpensesAutoSum = runningExpenseItems.reduce((sum, v) => sum + (isNaN(v) ? 0 : v), 0)
-  const runningExpensesBase = toNumber(
-    merged.total_running_expenses || 
-    merged.questionnaire_data?.total_running_expenses ||
-    merged.running_expenses || 
-    merged.RUNNING_EXPENSES || 
-    merged.TOTAL_RUNNING_EXPENSES ||
-    0,
-  ) || runningExpensesAutoSum
-  const runningCostsDeductibleActual = toNumber(
-    merged.total_running_costs_deductible ||
-    merged.running_costs_deductible ||
-    (runningExpensesBase && bupPercentageNum ? runningExpensesBase * (bupPercentageNum / 100) : 0),
-  ) ||
+  const runningExpensesBase =
+    toNumber(
+      merged.total_running_expenses ||
+        merged.questionnaire_data?.total_running_expenses ||
+        merged.running_expenses ||
+        merged.RUNNING_EXPENSES ||
+        merged.TOTAL_RUNNING_EXPENSES ||
+        0,
+    ) || runningExpensesAutoSum
+  const runningCostsDeductibleActual =
+    toNumber(
+      merged.total_running_costs_deductible ||
+        merged.running_costs_deductible ||
+        (runningExpensesBase && bupPercentageNum ? runningExpensesBase * (bupPercentageNum / 100) : 0),
+    ) ||
     // Demo fallback: use provided total claim if present (for demo scenarios)
     toNumber(
       merged.total_claim_per_the_running_cost_method ||
         merged.TOTAL_CLAIM_PER_THE_RUNNING_COST_METHOD ||
-        merged["TOTAL_CLAIM_ PER_THE_RUNNING_COST_METHOD"] ||
         merged["TOTAL_CLAIM_ PER_ THE_RUNNING_COST_METHOD"] ||
-        merged["TOTAL_CLAIM_ PER_ THE_RUNNING_COST_METHOD "],
+        merged["TOTAL_CLAIM_ PER_ THE_RUNNING_COST_METHOD "] ||
+        merged["TOTAL_CLAIM_ PER_ THE_RUNNING_COST_METHOD  "],
     )
 
   // Property expenses (occupancy) and depreciation
   const mortgageInterest = toNumber(
-    merged.questionnaire_data?.mortgage_interest || merged.mortgage_interest || merged.q29_loan_interest || merged.HOME_LOAN_INTEREST || 0,
+    merged.questionnaire_data?.mortgage_interest ||
+      merged.mortgage_interest ||
+      merged.q29_loan_interest ||
+      merged.HOME_LOAN_INTEREST ||
+      0,
   )
-  const councilRates = toNumber(merged.questionnaire_data?.council_rates || merged.council_rates || merged.q29_council_rates || merged.COUNCIL_RATES || 0)
-  const waterRates = toNumber(merged.questionnaire_data?.water_rates || merged.water_rates || merged.q29_water_rates || merged.WATER_RATES || 0)
+  const councilRates = toNumber(
+    merged.questionnaire_data?.council_rates ||
+      merged.council_rates ||
+      merged.q29_council_rates ||
+      merged.COUNCIL_RATES ||
+      0,
+  )
+  const waterRates = toNumber(
+    merged.questionnaire_data?.water_rates || merged.water_rates || merged.q29_water_rates || merged.WATER_RATES || 0,
+  )
   const buildingInsurance = toNumber(
     merged.questionnaire_data?.building_insurance ||
       merged.building_insurance ||
@@ -637,12 +658,22 @@ function mapQuestionnairesToTemplateData(questionnaire1: any, questionnaire2?: a
       0,
   )
   const repairsMaintenance = toNumber(
-    merged.questionnaire_data?.repairs_maintenance || merged.repairs_maintenance || merged.REPAIRS_MAINTENANCE || merged.q29_repairs_maintenance || 0,
+    merged.questionnaire_data?.repairs_maintenance ||
+      merged.repairs_maintenance ||
+      merged.REPAIRS_MAINTENANCE ||
+      merged.q29_repairs_maintenance ||
+      0,
   )
   const buildingValue = toNumber(merged.building_value || merged.BUILDING_VALUE || 0)
   const buildingDepreciation = buildingValue
     ? buildingValue * 0.025
-    : toNumber(merged.questionnaire_data?.depreciation || merged.building_depreciation || merged.BUILDING_DEPRECIATION || merged.q29_equipment_depreciation || 0)
+    : toNumber(
+        merged.questionnaire_data?.depreciation ||
+          merged.building_depreciation ||
+          merged.BUILDING_DEPRECIATION ||
+          merged.q29_equipment_depreciation ||
+          0,
+      )
 
   const propertyExpensesTotal =
     mortgageInterest + councilRates + waterRates + buildingInsurance + repairsMaintenance + buildingDepreciation
@@ -650,59 +681,73 @@ function mapQuestionnairesToTemplateData(questionnaire1: any, questionnaire2?: a
   const propertyDeductibleCalculated =
     propertyExpensesTotal && bupPercentageNum ? propertyExpensesTotal * (bupPercentageNum / 100) : 0
 
-  const totalPropertyDeductibleNum = toNumber(merged.total_property_deductible || merged.TOTAL_PROPERTY_DEDUCTIBLE || 0) ||
-    propertyDeductibleCalculated
+  const totalPropertyDeductibleNum =
+    toNumber(merged.total_property_deductible || merged.TOTAL_PROPERTY_DEDUCTIBLE || 0) || propertyDeductibleCalculated
 
   // Calculate individual deductibles
   const mortgageDeductibleNum = mortgageInterest && bupPercentageNum ? mortgageInterest * (bupPercentageNum / 100) : 0
   const ratesDeductibleNum = councilRates && bupPercentageNum ? councilRates * (bupPercentageNum / 100) : 0
   const waterDeductibleNum = waterRates && bupPercentageNum ? waterRates * (bupPercentageNum / 100) : 0
-  const insuranceDeductibleNum = buildingInsurance && bupPercentageNum ? buildingInsurance * (bupPercentageNum / 100) : 0
-  const repairsDeductibleNum = repairsMaintenance && bupPercentageNum ? repairsMaintenance * (bupPercentageNum / 100) : 0
-  const depreciationDeductibleNum = buildingDepreciation && bupPercentageNum ? buildingDepreciation * (bupPercentageNum / 100) : 0
+  const insuranceDeductibleNum =
+    buildingInsurance && bupPercentageNum ? buildingInsurance * (bupPercentageNum / 100) : 0
+  const repairsDeductibleNum =
+    repairsMaintenance && bupPercentageNum ? repairsMaintenance * (bupPercentageNum / 100) : 0
+  const depreciationDeductibleNum =
+    buildingDepreciation && bupPercentageNum ? buildingDepreciation * (bupPercentageNum / 100) : 0
 
   // Calculate individual running expense amounts (for table)
-  const electricityAmount = toNumber(merged.questionnaire_data?.electricity_annual || merged.electricity_annual || merged.ELECTRICITY || merged.electricity || 0)
-  const gasAmount = toNumber(merged.questionnaire_data?.gas_annual || merged.gas_annual || merged.GAS || merged.gas || 0)
-  const cleaningAmount = toNumber(merged.questionnaire_data?.cleaning_annual || merged.cleaning_annual || merged.CLEANING || merged.cleaning || 0)
-  
+  const electricityAmount = toNumber(
+    merged.questionnaire_data?.electricity_annual ||
+      merged.electricity_annual ||
+      merged.ELECTRICITY ||
+      merged.electricity ||
+      0,
+  )
+  const gasAmount = toNumber(
+    merged.questionnaire_data?.gas_annual || merged.gas_annual || merged.GAS || merged.gas || 0,
+  )
+  const cleaningAmount = toNumber(
+    merged.questionnaire_data?.cleaning_annual || merged.cleaning_annual || merged.CLEANING || merged.cleaning || 0,
+  )
+
   // Total running expenses for table = only ELECTRICITY + GAS + CLEANING
   const totalRunningExpensesForTable = electricityAmount + gasAmount + cleaningAmount
-  
+
   // Calculate individual running expense deductibles
-  const electricityDeductibleNum = electricityAmount && bupPercentageNum ? electricityAmount * (bupPercentageNum / 100) : 0
+  const electricityDeductibleNum =
+    electricityAmount && bupPercentageNum ? electricityAmount * (bupPercentageNum / 100) : 0
   const gasDeductibleNum = gasAmount && bupPercentageNum ? gasAmount * (bupPercentageNum / 100) : 0
-  const cleaningDeductibleNum = cleaningAmount && bupPercentageNum ? cleaningAmount * (bupPercentageNum / 100) : 0
-  
+  const cleaningDeductibleNum = cleaningAmount && bupPercentageNum ? cleaningAmount * (bupPercentageNum / 0) : 0
+
   // Total running expenses deductible for table = TOTAL_RUNNING_EXPENSES × BUSINESS_USE_PERCENTAGE
   // This is the same as (ELECTRICITY + GAS + CLEANING) × BUP%
-  const totalRunningExpensesDeductibleForTable = totalRunningExpensesForTable && bupPercentageNum 
-    ? totalRunningExpensesForTable * (bupPercentageNum / 100)
-    : (electricityDeductibleNum + gasDeductibleNum + cleaningDeductibleNum) // Fallback to sum of individual deductibles
-  
-  // Total property deductible for table = sum of all property expense deductibles
-  const totalPropertyDeductibleForTable = mortgageDeductibleNum + ratesDeductibleNum + waterDeductibleNum + insuranceDeductibleNum + repairsDeductibleNum + depreciationDeductibleNum
+  const totalRunningExpensesDeductibleForTable =
+    totalRunningExpensesForTable && bupPercentageNum
+      ? totalRunningExpensesForTable * (bupPercentageNum / 100)
+      : electricityDeductibleNum + gasDeductibleNum + cleaningDeductibleNum // Fallback to sum of individual deductibles
 
   // Total deductible = property deductible + running costs deductible (overall total)
   const totalDeductibleNum = totalPropertyDeductibleNum + runningCostsDeductibleActual
   // Determine which running method is better (using table running expenses)
   let runningMethod = merged.running_method || merged.RUNNING_METHOD || ""
   if (!runningMethod && totalRunningExpensesDeductibleForTable > 0 && fixedRateDeductionNum > 0) {
-    runningMethod = totalRunningExpensesDeductibleForTable > fixedRateDeductionNum ? "Actual Cost Method" : "Fixed Rate Method"
+    runningMethod =
+      totalRunningExpensesDeductibleForTable > fixedRateDeductionNum ? "Actual Cost Method" : "Fixed Rate Method"
   }
 
   // Calculate running method deductible (numeric value for calculation)
-  const runningMethodDeductibleNum = runningMethod === "Actual Cost Method"
-    ? totalRunningExpensesDeductibleForTable
-    : runningMethod === "Fixed Rate Method"
-    ? fixedRateDeductionNum
-    : (totalRunningExpensesDeductibleForTable || fixedRateDeductionNum)
+  const runningMethodDeductibleNum =
+    runningMethod === "Actual Cost Method"
+      ? totalRunningExpensesDeductibleForTable
+      : runningMethod === "Fixed Rate Method"
+        ? fixedRateDeductionNum
+        : totalRunningExpensesDeductibleForTable || fixedRateDeductionNum
 
   // Total annual deduction = TOTAL_PROPERTY_DEDUCTIBLE + RUNNING_METHOD_DEDUCTIBLE
   const totalAnnualDeductionNum = toNumber(
     merged.total_annual_deduction ||
       merged.TOTAL_ANNUAL_DEDUCTION ||
-      (totalPropertyDeductibleForTable + runningMethodDeductibleNum),
+      totalPropertyDeductibleNum + runningMethodDeductibleNum,
   )
 
   // Actual cost method sentence (e.g., "$1200 × 30% = $360")
@@ -726,71 +771,71 @@ function mapQuestionnairesToTemplateData(questionnaire1: any, questionnaire2?: a
   }
 
   const reportDate = formatDateAU(
-    merged.report_date ||
-    merged.REPORT_DATE ||
-    (merged.tax_year ? `${merged.tax_year}-06-30` : new Date())
+    merged.report_date || merged.REPORT_DATE || (merged.tax_year ? `${merged.tax_year}-06-30` : new Date()),
   )
 
   const startDateOfHomeBusiness = formatDateAU(
     merged.start_date_of_home_business ||
-    merged.START_DATE_OF_HOME_BUSINESS ||
-    merged.business_start_date ||
-    merged.CLIENT_BUSINESS_START_DATE ||
-    ""
+      merged.START_DATE_OF_HOME_BUSINESS ||
+      merged.business_start_date ||
+      merged.CLIENT_BUSINESS_START_DATE ||
+      "",
   )
 
   // Calculate floor areas and business use percentage
   const totalHabitableFloorAreaNum = toNumber(
     merged.total_habitable_floor_area ||
-    merged.questionnaire_data?.total_habitable_floor_area ||
-    merged.total_floor_space_sqm ||
-    merged.questionnaire_data?.total_floor_space_sqm ||
-    merged.q16_total_floor_space ||
-    merged.TOTAL_HABITABLE_FLOOR_AREA ||
-    merged.TOTAL_FLOOR_AREA_M2 ||
-    0,
+      merged.questionnaire_data?.total_habitable_floor_area ||
+      merged.total_floor_space_sqm ||
+      merged.questionnaire_data?.total_floor_space_sqm ||
+      merged.q16_total_floor_space ||
+      merged.TOTAL_HABITABLE_FLOOR_AREA ||
+      merged.TOTAL_FLOOR_AREA_M2 ||
+      0,
   )
-  
+
   const homeOfficeAreaNum = toNumber(
     merged.home_office_floor_area ||
-    merged.questionnaire_data?.home_office_floor_area ||
-    merged.business_floor_space_sqm ||
-    merged.questionnaire_data?.business_floor_space_sqm ||
-    merged.q17_business_floor_space ||
-    merged.dedicated_office_area_m2 ||
-    merged.DEDICATED_OFFICE_AREA_M2 ||
-    merged.HOME_OFFICE_FLOOR_AREA ||
-    0,
+      merged.questionnaire_data?.home_office_floor_area ||
+      merged.business_floor_space_sqm ||
+      merged.questionnaire_data?.business_floor_space_sqm ||
+      merged.q17_business_floor_space ||
+      merged.dedicated_office_area_m2 ||
+      merged.DEDICATED_OFFICE_AREA_M2 ||
+      merged.HOME_OFFICE_FLOOR_AREA ||
+      0,
   )
-  
+
   const meetingAreaNum = toNumber(
     merged.meeting_area_floor_area ||
-    merged.dedicated_meeting_area_m2 ||
-    merged.DEDICATED_MEETING_AREA_M2 ||
-    merged.MEETING_AREA_FLOOR_AREA ||
-    0,
+      merged.dedicated_meeting_area_m2 ||
+      merged.DEDICATED_MEETING_AREA_M2 ||
+      merged.MEETING_AREA_FLOOR_AREA ||
+      0,
   )
-  
+
   const archiveAreaNum = toNumber(
     merged.archive_room_floor_area ||
-    merged.dedicated_archive_area_m2 ||
-    merged.DEDICATED_ARCHIVE_AREA_M2 ||
-    merged.ARCHIVE_ROOM_FLOOR_AREA ||
-    0,
+      merged.dedicated_archive_area_m2 ||
+      merged.DEDICATED_ARCHIVE_AREA_M2 ||
+      merged.ARCHIVE_ROOM_FLOOR_AREA ||
+      0,
   )
-  
-  const totalBusinessUseFloorAreaNum = toNumber(
-    merged.total_business_use_floor_area ||
-    merged.business_floor_space_sqm ||
-    merged.TOTAL_BUSINESS_USE_FLOOR_AREA ||
-    0,
-  ) || (homeOfficeAreaNum + meetingAreaNum + archiveAreaNum)
-  
+
+  const totalBusinessUseFloorAreaNum =
+    toNumber(
+      merged.total_business_use_floor_area ||
+        merged.business_floor_space_sqm ||
+        merged.TOTAL_BUSINESS_USE_FLOOR_AREA ||
+        0,
+    ) || homeOfficeAreaNum + meetingAreaNum + archiveAreaNum
+
   // Calculate business use percentage if not provided (rounded to nearest whole number)
-  const calculatedBUP = totalHabitableFloorAreaNum > 0 && totalBusinessUseFloorAreaNum > 0
-    ? Math.round((totalBusinessUseFloorAreaNum / totalHabitableFloorAreaNum) * 100)
-    : 0
-  
+  const calculatedBUP =
+    totalHabitableFloorAreaNum > 0 && totalBusinessUseFloorAreaNum > 0
+      ? Math.round((totalBusinessUseFloorAreaNum / totalHabitableFloorAreaNum) * 100)
+      : 0
+
   // Use provided BUP (already rounded) or calculated BUP (already rounded), then ensure final value is rounded
   const businessUsePercentageNum = Math.round(bupPercentageNum || calculatedBUP)
   const businessUsePercentageDisplay = businessUsePercentageNum > 0 ? `${businessUsePercentageNum}%` : ""
@@ -803,16 +848,16 @@ function mapQuestionnairesToTemplateData(questionnaire1: any, questionnaire2?: a
     CLIENT_BUSINESS_NAME: merged.business_name || merged.CLIENT_BUSINESS_NAME || merged.industry_description || "",
     CLIENT_BUSINESS_TYPE: merged.business_type || merged.CLIENT_BUSINESS_TYPE || merged.legal_structure || "",
     CLIENT_ABN: merged.abn || merged.questionnaire_data?.abn || merged.CLIENT_ABN || merged.ABN || "",
-    CLIENT_BUSINESS_START_DATE: startDateOfHomeBusiness || formatDateAU(merged.business_start_date || merged.CLIENT_BUSINESS_START_DATE || ""),
+    CLIENT_BUSINESS_START_DATE:
+      startDateOfHomeBusiness || formatDateAU(merged.business_start_date || merged.CLIENT_BUSINESS_START_DATE || ""),
 
     // Fixed rate method display fields
     FIXED_RATE_HOURS_PER_WEEK: hoursPerWeek ? hoursPerWeek.toString() : "",
     FIXED_RATE_WEEKS_PER_YEAR: weeksPerYear ? weeksPerYear.toString() : "",
-    FIXED_RATE_TOTAL_HOURS: totalHours,
-    HOURS_PER_YEAR: totalHours,
+    FIXED_RATE_TOTAL_HOURS: totalHoursNum,
+    HOURS_PER_YEAR: totalHoursNum,
     FIXED_RATE_HOURLY_RATE: "$0.70",
     FIXED_RATE_DEDUCTION: formatPlainAmount(fixedRateDeductionNum, true) || "",
-    FIXED_RATE_METHOD_DEDUCTION: formatCurrency(fixedRateDeductionNum) || "",
     RUNNING_COSTS_DEDUCTION_FIXED: formatCurrency(fixedRateDeductionNum) || "",
     RUNNING_COSTS_DEDUCTION: formatCurrency(fixedRateDeductionNum) || "",
     RUNNING_COSTS_DEDUCTION_FIXED_METHOD: formatCurrency(fixedRateDeductionNum) || "",
@@ -851,18 +896,24 @@ function mapQuestionnairesToTemplateData(questionnaire1: any, questionnaire2?: a
     BUSINESS_FLOOR_SPACE: merged.q17_business_floor_space || merged.business_floor_space_sqm || "",
 
     // Property Expenses - Quick Questionnaire (Q29)
-    MORTGAGE_INTEREST: formatCurrency(
-      merged.questionnaire_data?.mortgage_interest ||
-      merged.mortgage_interest ||
-      merged.q29_loan_interest ||
-      merged.ss_q44_rent,
-    ) || "",
-    COUNCIL_RATES: formatCurrency(
-      merged.questionnaire_data?.council_rates || merged.council_rates || merged.q29_council_rates || merged.ss_q44_council,
-    ) || "",
-    WATER_RATES: formatCurrency(
-      merged.questionnaire_data?.water_rates || merged.water_rates || merged.q29_water_rates || merged.ss_q44_water,
-    ) || "",
+    MORTGAGE_INTEREST:
+      formatCurrency(
+        merged.questionnaire_data?.mortgage_interest ||
+          merged.mortgage_interest ||
+          merged.q29_loan_interest ||
+          merged.ss_q44_rent,
+      ) || "",
+    COUNCIL_RATES:
+      formatCurrency(
+        merged.questionnaire_data?.council_rates ||
+          merged.council_rates ||
+          merged.q29_council_rates ||
+          merged.ss_q44_council,
+      ) || "",
+    WATER_RATES:
+      formatCurrency(
+        merged.questionnaire_data?.water_rates || merged.water_rates || merged.q29_water_rates || merged.ss_q44_water,
+      ) || "",
     BUILDING_INSURANCE: formatCurrency(buildingInsurance) || "",
     INSURANCE: formatCurrency(buildingInsurance) || "",
     REPAIRS_MAINTENANCE: formatCurrency(repairsMaintenance) || "",
@@ -901,7 +952,7 @@ function mapQuestionnairesToTemplateData(questionnaire1: any, questionnaire2?: a
     // Business Use Calculation
     HOURS_PER_WEEK: merged.hours_per_week?.toString() || merged.ss_q48_time?.match(/\d+/)?.[0] || "",
     WEEKS_PER_YEAR: merged.weeks_per_year?.toString() || "52",
-    TOTAL_HOURS: totalHours,
+    TOTAL_HOURS: totalHoursNum,
 
     // Years Operating
     YEARS_OPERATED: merged.q20_years_operated || merged.years_operating_from_home || "",
@@ -988,8 +1039,15 @@ function mapQuestionnairesToTemplateData(questionnaire1: any, questionnaire2?: a
     "CLIENT ADDRESS": formatAddress(merged.property_address || merged.CLIENT_ADDRESS || ""),
     "CLIENT_ NAME": merged.client_name || merged.CLIENT_NAME || "",
     REPORT_DATE: reportDate,
-    CLIENT_FIRST_NAME: merged.client_first_name || merged.CLIENT_FIRST_NAME || (merged.client_name || "").split(" ")[0] || "",
-    CLIENT_LOCAL_COUNCIL: merged.client_local_council || merged.questionnaire_data?.client_local_council || merged.local_council || merged.council || merged.CLIENT_LOCAL_COUNCIL || "",
+    CLIENT_FIRST_NAME:
+      merged.client_first_name || merged.CLIENT_FIRST_NAME || (merged.client_name || "").split(" ")[0] || "",
+    CLIENT_LOCAL_COUNCIL:
+      merged.client_local_council ||
+      merged.questionnaire_data?.client_local_council ||
+      merged.local_council ||
+      merged.council ||
+      merged.CLIENT_LOCAL_COUNCIL ||
+      "",
     TOTAL_FLOOR_AREA_M2: totalHabitableFloorAreaNum > 0 ? `${totalHabitableFloorAreaNum} m²` : "",
     BUILDING_DEPRECIATION_VALUE: formatCurrency(buildingDepreciation) || "",
     DEDICATED_OFFICE_AREA_M2: homeOfficeAreaNum > 0 ? `${homeOfficeAreaNum} m²` : "",
@@ -1021,25 +1079,29 @@ function mapQuestionnairesToTemplateData(questionnaire1: any, questionnaire2?: a
     RUNNING_COSTS_DEDUCTION_SENTENCE_ACTUAL: actualCostDeductionSentence || "",
     TOTAL_WEEKLY_HOURS_WORKED: merged.hours_per_week?.toString() || "",
     TOTAL_NUMBER_OF_WEEKS_WORKED: merged.weeks_per_year?.toString() || "52",
-    TOTAL_NUMBER_OF_HOURS_WORKED: totalHours,
-    TOTAL_FIXED_RATE_METHOD_CLAIM: formatPlainAmount(
-      merged.total_fixed_rate_method_claim || merged.TOTAL_FIXED_RATE_METHOD_CLAIM || fixedRateDeductionNum,
-      true,
-    ) || "",
+    TOTAL_NUMBER_OF_HOURS_WORKED: totalHoursNum,
+    TOTAL_FIXED_RATE_METHOD_CLAIM:
+      formatPlainAmount(
+        merged.total_fixed_rate_method_claim || merged.TOTAL_FIXED_RATE_METHOD_CLAIM || fixedRateDeductionNum,
+        true,
+      ) || "",
     "TOTAL_CLAIM_ PER_ THE_RUNNING_COST_METHOD": formatPlainAmount(totalRunningExpensesDeductibleForTable, true) || "", // Same as TOTAL_RUNNING_COSTS_DEDUCTIBLE
-    "TOTAL_CLAIM_ PER_ THE_FIXED_COST_METHOD": formatPlainAmount(
-      merged.total_claim_per_fixed_cost_method || merged.TOTAL_CLAIM_PER_FIXED_COST_METHOD || fixedRateDeductionNum,
-      true,
-    ) || "",
-    BEST_METHOD_COMPARISON: merged.best_method_comparison || merged.BEST_METHOD_COMPARISON || bestMethodComparison || "",
+    "TOTAL_CLAIM_ PER_ THE_FIXED_COST_METHOD":
+      formatPlainAmount(
+        merged.total_claim_per_fixed_cost_method || merged.TOTAL_CLAIM_PER_FIXED_COST_METHOD || fixedRateDeductionNum,
+        true,
+      ) || "",
+    BEST_METHOD_COMPARISON:
+      merged.best_method_comparison || merged.BEST_METHOD_COMPARISON || bestMethodComparison || "",
     RECOMMENDED_METHOD: merged.recommended_method || merged.strategy_name || merged.strategy || "",
-    TOTAL_PROPERTY_DEDUCTIBLE: formatCurrency(totalPropertyDeductibleForTable) || "", // Sum of MORTGAGE_DEDUCTIBLE + RATES_DEDUCTIBLE + WATER_DEDUCTIBLE + INSURANCE_DEDUCTIBLE + REPAIRS_DEDUCTIBLE + DEPRECIATION_DEDUCTIBLE
+    TOTAL_PROPERTY_DEDUCTIBLE: formatCurrency(totalPropertyDeductibleNum) || "", // Sum of MORTGAGE_DEDUCTIBLE + RATES_DEDUCTIBLE + WATER_DEDUCTIBLE + INSURANCE_DEDUCTIBLE + REPAIRS_DEDUCTIBLE + DEPRECIATION_DEDUCTIBLE
     RUNNING_METHOD: runningMethod || "",
-    RUNNING_METHOD_DEDUCTIBLE: runningMethod === "Actual Cost Method" 
-      ? formatCurrency(totalRunningExpensesDeductibleForTable) || "" // Use TOTAL_CLAIM_PER_THE_RUNNING_COST_METHOD
-      : runningMethod === "Fixed Rate Method"
-      ? formatCurrency(fixedRateDeductionNum) || "" // Use TOTAL_CLAIM_PER_THE_FIXED_COST_METHOD
-      : formatCurrency(totalRunningExpensesDeductibleForTable || fixedRateDeductionNum) || "", // Default to whichever is available
+    RUNNING_METHOD_DEDUCTIBLE:
+      runningMethod === "Actual Cost Method"
+        ? formatCurrency(totalRunningExpensesDeductibleForTable) || "" // Use TOTAL_CLAIM_PER_THE_RUNNING_COST_METHOD
+        : runningMethod === "Fixed Rate Method"
+          ? formatCurrency(fixedRateDeductionNum) || "" // Use TOTAL_CLAIM_PER_THE_FIXED_COST_METHOD
+          : formatCurrency(totalRunningExpensesDeductibleForTable || fixedRateDeductionNum) || "", // Default to whichever is available
     RUNNING_EXPENSES_DEDUCTION: formatCurrency(runningCostsDeductibleActual) || "", // Deduction amount for running expenses in summary table
     TOTAL_ANNUAL_DEDUCTION: formatCurrency(totalAnnualDeductionNum) || "",
     START_DATE_OF_HOME_BUSINESS: startDateOfHomeBusiness,
@@ -1048,35 +1110,50 @@ function mapQuestionnairesToTemplateData(questionnaire1: any, questionnaire2?: a
     "Local Council": merged.client_local_council || merged.local_council || merged.council || "",
     LOCAL_COUNCIL: merged.client_local_council || merged.local_council || merged.council || "",
     ABN: merged.abn || merged.CLIENT_ABN || "",
-    BUSINESS_START_DATE: formatDateAU(merged.business_start_date || merged.CLIENT_BUSINESS_START_DATE || startDateOfHomeBusiness || ""),
-    "Business Start Date": formatDateAU(merged.business_start_date || merged.CLIENT_BUSINESS_START_DATE || startDateOfHomeBusiness || ""),
+    BUSINESS_START_DATE: formatDateAU(
+      merged.business_start_date || merged.CLIENT_BUSINESS_START_DATE || startDateOfHomeBusiness || "",
+    ),
+    "Business Start Date": formatDateAU(
+      merged.business_start_date || merged.CLIENT_BUSINESS_START_DATE || startDateOfHomeBusiness || "",
+    ),
     TOTAL_FLOOR_AREA: merged.q16_total_floor_space || merged.total_floor_space_sqm || "",
     "Total Floor Area": merged.q16_total_floor_space || merged.total_floor_space_sqm || "",
-    BUILDING_DEPRECIATION: formatCurrency(toNumber(merged.depreciation || merged.q29_equipment_depreciation || buildingDepreciation)) || "",
-    "Building Depreciation (2.5% p.a.)": formatCurrency(toNumber(merged.depreciation || merged.q29_equipment_depreciation || buildingDepreciation)) || "",
-    HOME_OFFICE: merged.home_office_floor_area || merged.business_floor_space_sqm || merged.q17_business_floor_space || "",
-    "Home Office": merged.home_office_floor_area || merged.business_floor_space_sqm || merged.q17_business_floor_space || "",
+    BUILDING_DEPRECIATION:
+      formatCurrency(toNumber(merged.depreciation || merged.q29_equipment_depreciation || buildingDepreciation)) || "",
+    "Building Depreciation (2.5% p.a.)":
+      formatCurrency(toNumber(merged.depreciation || merged.q29_equipment_depreciation || buildingDepreciation)) || "",
+    HOME_OFFICE:
+      merged.home_office_floor_area || merged.business_floor_space_sqm || merged.q17_business_floor_space || "",
+    "Home Office":
+      merged.home_office_floor_area || merged.business_floor_space_sqm || merged.q17_business_floor_space || "",
     MEETING_AREA: merged.meeting_area_floor_area || merged.dedicated_meeting_area_m2 || "",
     "Meeting Area": merged.meeting_area_floor_area || merged.dedicated_meeting_area_m2 || "",
     ARCHIVE_ROOM: merged.archive_room_floor_area || merged.dedicated_archive_area_m2 || "",
     "Archive Room": merged.archive_room_floor_area || merged.dedicated_archive_area_m2 || "",
-    TOTAL_BUSINESS_USE_AREA: merged.total_business_use_area_m2 || merged.business_floor_space_sqm || merged.q17_business_floor_space || "",
-    "Total Business Use Area": merged.total_business_use_area_m2 || merged.business_floor_space_sqm || merged.q17_business_floor_space || "",
+    TOTAL_BUSINESS_USE_AREA:
+      merged.total_business_use_area_m2 || merged.business_floor_space_sqm || merged.q17_business_floor_space || "",
+    "Total Business Use Area":
+      merged.total_business_use_area_m2 || merged.business_floor_space_sqm || merged.q17_business_floor_space || "",
     "Council Rates": formatCurrency(toNumber(merged.council_rates || merged.q29_council_rates || councilRates)) || "",
     "Water Rates": formatCurrency(toNumber(merged.water_rates || merged.q29_water_rates || waterRates)) || "",
     "Total Property Expenses": formatCurrency(toNumber(merged.total_property_expenses || propertyExpensesTotal)) || "",
-    TOTAL_PROPERTY_EXPENSES_ALIAS: formatCurrency(toNumber(merged.total_property_expenses || propertyExpensesTotal)) || "",
+    TOTAL_PROPERTY_EXPENSES_ALIAS:
+      formatCurrency(toNumber(merged.total_property_expenses || propertyExpensesTotal)) || "",
     TOTAL_DEDUCTIBLE_ALIAS: formatCurrency(toNumber(merged.total_deductible || totalDeductibleNum)) || "",
-    TOTAL_RUNNING_EXPENSES_ALIAS: formatCurrency(toNumber(merged.total_running_expenses || totalRunningExpensesForTable)) || "",
+    TOTAL_RUNNING_EXPENSES_ALIAS:
+      formatCurrency(toNumber(merged.total_running_expenses || totalRunningExpensesForTable)) || "",
     TOTAL_BUSINESS_USE_FLOOR_AREA_ALIAS: totalBusinessUseFloorAreaNum > 0 ? `${totalBusinessUseFloorAreaNum} m²` : "",
     TOTAL_HABITABLE_FLOOR_AREA_ALIAS: totalHabitableFloorAreaNum > 0 ? `${totalHabitableFloorAreaNum} m²` : "",
     BUSINESS_USE_PERCENTAGE_ALIAS: businessUsePercentageDisplay || "",
-    "TOTAL_CLAIM_ PER_ THE_RUNNING_COST_METHOD_ALIAS": formatPlainAmount(totalRunningExpensesDeductibleForTable, true) || "", // Same as TOTAL_RUNNING_COSTS_DEDUCTIBLE
-    "TOTAL_CLAIM_ PER_ THE_FIXED_COST_METHOD_ALIAS": formatPlainAmount(
-      merged.total_claim_per_fixed_cost_method || merged.TOTAL_CLAIM_PER_FIXED_COST_METHOD || fixedRateDeductionNum,
-      true,
-    ) || "",
-    BEST_METHOD_COMPARISON_ALIAS: merged.best_method_comparison || merged.BEST_METHOD_COMPARISON || bestMethodComparison || "",
+    "TOTAL_CLAIM_ PER_ THE_RUNNING_COST_METHOD_ALIAS":
+      formatPlainAmount(totalRunningExpensesDeductibleForTable, true) || "", // Same as TOTAL_RUNNING_COSTS_DEDUCTIBLE
+    "TOTAL_CLAIM_ PER_ THE_FIXED_COST_METHOD_ALIAS":
+      formatPlainAmount(
+        merged.total_claim_per_fixed_cost_method || merged.TOTAL_CLAIM_PER_FIXED_COST_METHOD || fixedRateDeductionNum,
+        true,
+      ) || "",
+    BEST_METHOD_COMPARISON_ALIAS:
+      merged.best_method_comparison || merged.BEST_METHOD_COMPARISON || bestMethodComparison || "",
     TOTAL_PROPERTY_DEDUCTIBLE_ALIAS: formatCurrency(totalPropertyDeductibleNum) || "",
     RUNNING_METHOD_ALIAS: runningMethod || "",
     TOTAL_ANNUAL_DEDUCTION_ALIAS: formatCurrency(totalAnnualDeductionNum) || "",
@@ -1090,7 +1167,7 @@ function mapQuestionnairesToTemplateData(questionnaire1: any, questionnaire2?: a
       ]),
     ),
     ...merged,
-    
+
     // Override with formatted values to ensure proper formatting (these come last so they override any raw values from merged)
     BUILDING_VALUE: formatCurrency(buildingValue) || "",
     BUSINESS_TYPE: (() => {
@@ -1121,16 +1198,15 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "At least one questionnaire is required" }, { status: 400 })
     }
 
-    const templatePath = getTemplatePath()
-    console.log("[v0] 📁 Loading template from:", templatePath)
+    console.log("[v0] 📁 Loading template from:", TEMPLATE_PATH)
 
     const fs = require("fs")
-    if (!fs.existsSync(templatePath)) {
-      console.error("[v0] ❌ Template file not found at:", templatePath)
-      return NextResponse.json({ error: `Template file not found at ${templatePath}` }, { status: 500 })
+    if (!fs.existsSync(TEMPLATE_PATH)) {
+      console.error("[v0] ❌ Template file not found at:", TEMPLATE_PATH)
+      return NextResponse.json({ error: `Template file not found at ${TEMPLATE_PATH}` }, { status: 500 })
     }
 
-    const templateBuffer = readFileSync(templatePath)
+    const templateBuffer = readFileSync(TEMPLATE_PATH)
     console.log("[v0] ✅ Template loaded, size:", templateBuffer.length, "bytes")
 
     if (templateBuffer.length === 0) {
@@ -1147,10 +1223,8 @@ export async function POST(request: NextRequest) {
     console.log("[v0] ✅ Data mapping complete, fields:", Object.keys(questionnaireData).length)
 
     console.log("[v0] 📝 Initializing Docxtemplater...")
-    let doc: Docxtemplater
-    let useCleanedZip = false
 
-    // Template uses {{ }} delimiters (double braces), not single braces
+    // Template uses {{ }} delimiters (double braces)
     const docxtemplaterOptions = {
       paragraphLoop: true,
       linebreaks: true,
@@ -1164,18 +1238,23 @@ export async function POST(request: NextRequest) {
       },
     }
 
+    let doc: Docxtemplater
+
     try {
-      // Try without cleaning first - docxtemplater can handle most cases
+      // Try without cleaning first
       doc = new Docxtemplater(zip, docxtemplaterOptions)
       console.log("[v0] ✅ Docxtemplater initialized without cleaning")
     } catch (initError: any) {
       // If initialization fails, try with cleaned XML
-      if (initError.message?.includes("Malformed xml") || initError.message?.includes("xml") || initError.message?.includes("Duplicate")) {
+      if (
+        initError.message?.includes("Multi error") ||
+        initError.message?.includes("Malformed xml") ||
+        initError.message?.includes("xml") ||
+        initError.message?.includes("Duplicate")
+      ) {
         console.log("[v0] ⚠️  Initial initialization failed, trying with XML cleaning...")
-        console.log("[v0] 🧹 Cleaning fragmented XML placeholders...")
         const cleanedZip = cleanFragmentedPlaceholders(zip)
         console.log("[v0] ✅ XML cleaning complete")
-        useCleanedZip = true
 
         doc = new Docxtemplater(cleanedZip, docxtemplaterOptions)
         console.log("[v0] ✅ Docxtemplater initialized with cleaned XML")
@@ -1195,37 +1274,12 @@ export async function POST(request: NextRequest) {
     })
     console.log("[v0] ✅ DOCX buffer generated, size:", docxBuffer.length, "bytes")
 
-    // Convert DOCX to PDF (with fast fallback to DOCX)
-    console.log("[v0] 🔄 Attempting PDF conversion (will fallback to DOCX if unavailable)...")
-    let pdfBuffer: Buffer
-    let filename: string
-    let contentType: string
-
-    try {
-      // Try to convert to PDF using docx-pdf or alternative method
-      // This will timeout quickly if LibreOffice is not available
-      // Wrap in Promise to catch any unhandled errors
-      pdfBuffer = await Promise.resolve(convertDocxToPdf(docxBuffer)).catch((err: any) => {
-        console.log("[v0] ⚠️  PDF conversion error caught:", err.message || String(err))
-        throw err
-      })
-      filename = `Tax_Report_${clientName || "Client"}_${new Date().toISOString().split("T")[0]}.pdf`
-      contentType = "application/pdf"
-      console.log("[v0] ✅ PDF conversion successful, size:", pdfBuffer.length, "bytes")
-    } catch (pdfError: any) {
-      // Catch any error (including unhandled assertion errors) and fallback to DOCX
-      const errorMsg = pdfError?.message || pdfError?.toString() || "Unknown error"
-      console.log("[v0] ℹ️  PDF conversion not available, using DOCX format:", errorMsg)
-      // Fallback to DOCX immediately - this is faster and works everywhere
-      pdfBuffer = docxBuffer
-      filename = `Tax_Report_${clientName || "Client"}_${new Date().toISOString().split("T")[0]}.docx`
-      contentType = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-      console.log("[v0] ✅ DOCX file ready, size:", pdfBuffer.length, "bytes")
-    }
+    const filename = `Tax_Report_${clientName || "Client"}_${new Date().toISOString().split("T")[0]}.docx`
+    const contentType = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
 
     console.log("[v0] ✨ Report generation complete! File:", filename)
 
-    return new NextResponse(Buffer.from(pdfBuffer), {
+    return new NextResponse(Buffer.from(docxBuffer), {
       headers: {
         "Content-Type": contentType,
         "Content-Disposition": `attachment; filename="${filename}"`,

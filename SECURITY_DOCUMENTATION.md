@@ -22,14 +22,14 @@ This application implements world-class security protocols meeting Australian re
 - **Encrypted Backups**: Database backups are automatically encrypted
 
 ### Field-Level Security
-```sql
+\`\`\`sql
 -- TFN is encrypted before storage
 INSERT INTO profiles (tfn_encrypted) 
 VALUES (pgp_sym_encrypt('123456789', 'encryption_key'));
 
 -- Only authorized users can decrypt
 SELECT pgp_sym_decrypt(tfn_encrypted, 'encryption_key') FROM profiles;
-```
+\`\`\`
 
 ---
 
@@ -87,12 +87,12 @@ SELECT pgp_sym_decrypt(tfn_encrypted, 'encryption_key') FROM profiles;
 - **Audit Log Retention**: 10-year retention for security audit logs
 
 #### TFN Security Protocol
-```typescript
+\`\`\`typescript
 // TFN is NEVER stored in plain text
 // TFN is NEVER logged in audit trails
 // TFN access requires explicit justification
 await validateTFNAccess(userId, 'Preparing tax return for client');
-```
+\`\`\`
 
 #### Secure Data Handling
 - **Australian Data Residency**: Supabase configured for AU region (Sydney)
@@ -115,7 +115,7 @@ await validateTFNAccess(userId, 'Preparing tax return for client');
 - **Affected User Notification**: Automatic user notification for data breaches
 - **Breach Registry**: All incidents logged with remediation actions
 
-```typescript
+\`\`\`typescript
 // Automatic breach detection
 if (unauthorizedAccessDetected) {
   await logDataBreach({
@@ -126,7 +126,7 @@ if (unauthorizedAccessDetected) {
     notificationDeadline: add30Days(new Date())
   });
 }
-```
+\`\`\`
 
 ---
 
@@ -144,13 +144,13 @@ if (unauthorizedAccessDetected) {
 - **Consent Withdrawal**: Users can withdraw consent at any time
 - **Justification Required**: Every data collection requires documented purpose
 
-```typescript
+\`\`\`typescript
 // Explicit consent required before collection
 const consent = await getConsent(userId, 'data_collection');
 if (!consent.granted) {
   throw new Error('User has not consented to data collection');
 }
-```
+\`\`\`
 
 ### APP 6: Use or Disclosure
 - **Consent for Sharing**: Tax agents must obtain client consent before sharing
@@ -181,7 +181,7 @@ if (!consent.granted) {
 ## 5. Comprehensive Audit System
 
 ### Audit Logging Architecture
-```sql
+\`\`\`sql
 -- Every sensitive operation is logged
 CREATE TABLE audit_logs (
   id UUID PRIMARY KEY,
@@ -194,7 +194,7 @@ CREATE TABLE audit_logs (
   justification TEXT,          -- Required for sensitive data access
   timestamp TIMESTAMPTZ DEFAULT NOW()
 );
-```
+\`\`\`
 
 ### What Gets Logged
 - **Data Access**: Every SELECT on profiles, questionnaires, documents
@@ -217,7 +217,7 @@ CREATE TABLE audit_logs (
 ## 6. Advanced Threat Protection
 
 ### Rate Limiting
-```typescript
+\`\`\`typescript
 // Per-user rate limits
 const limits = {
   api: 100 requests per 15 minutes,
@@ -225,7 +225,7 @@ const limits = {
   mfa: 3 attempts per 5 minutes,
   export: 3 requests per day
 };
-```
+\`\`\`
 
 ### IP Access Control
 - **Whitelist for Tax Agents**: Tax agents can restrict access to known IPs
@@ -240,7 +240,7 @@ const limits = {
 - **Force Logout**: Admin can terminate all user sessions remotely
 
 ### OWASP Security Headers
-```typescript
+\`\`\`typescript
 // Middleware applies security headers to all responses
 {
   'X-Frame-Options': 'DENY',
@@ -250,14 +250,14 @@ const limits = {
   'Content-Security-Policy': "default-src 'self'",
   'Referrer-Policy': 'strict-origin-when-cross-origin'
 }
-```
+\`\`\`
 
 ---
 
 ## 7. Data Lifecycle Management
 
 ### Data Retention Policies
-```typescript
+\`\`\`typescript
 const retentionPolicies = {
   taxRecords: '7 years',      // ATO requirement
   auditLogs: '10 years',      // Regulatory requirement
@@ -265,7 +265,7 @@ const retentionPolicies = {
   documents: '7 years',       // Tax document retention
   consentRecords: 'Indefinite' // Proof of consent
 };
-```
+\`\`\`
 
 ### Right to Deletion (GDPR/Privacy Act)
 - **Deletion Request Form**: Users can request data deletion at /settings/security
@@ -275,7 +275,7 @@ const retentionPolicies = {
 - **Third-Party Notification**: Partners notified to delete shared data
 
 ### Data Export (APP 12)
-```typescript
+\`\`\`typescript
 // Complete data export in machine-readable format
 const export = {
   profile: { /* user profile data */ },
@@ -284,14 +284,14 @@ const export = {
   auditLogs: [ /* user's access history */ ],
   consents: [ /* consent records */ ]
 };
-```
+\`\`\`
 
 ---
 
 ## 8. Client-Agent Relationship Security
 
 ### Explicit Assignment Model
-```sql
+\`\`\`sql
 -- Tax agents can ONLY access explicitly assigned clients
 CREATE TABLE client_agent_assignments (
   id UUID PRIMARY KEY,
@@ -303,7 +303,7 @@ CREATE TABLE client_agent_assignments (
   consent_date TIMESTAMPTZ,
   active BOOLEAN DEFAULT true
 );
-```
+\`\`\`
 
 ### Assignment Protection
 - **Mutual Consent**: Both client and agent must agree to assignment
@@ -312,14 +312,14 @@ CREATE TABLE client_agent_assignments (
 - **Assignment Audit**: All assignments logged with timestamp and consent proof
 
 ### Data Access Boundaries
-```typescript
+\`\`\`typescript
 // Tax agent can ONLY query their assigned clients
 SELECT * FROM questionnaires
 WHERE user_id IN (
   SELECT client_id FROM client_agent_assignments
   WHERE agent_id = auth.uid() AND active = true
 );
-```
+\`\`\`
 
 ---
 
@@ -333,7 +333,7 @@ WHERE user_id IN (
 - **Access Control**: Only owner and assigned agent can access files
 
 ### Document Metadata
-```typescript
+\`\`\`typescript
 interface DocumentMetadata {
   id: string;
   user_id: string;
@@ -346,7 +346,7 @@ interface DocumentMetadata {
   blob_url: string;           // Encrypted URL with token
   virus_scan_status: 'pending' | 'clean' | 'infected';
 }
-```
+\`\`\`
 
 ### Secure Download
 - **Time-Limited URLs**: Download links expire after 1 hour
@@ -365,7 +365,7 @@ interface DocumentMetadata {
 - **Reset Capability**: Tax agents can grant additional assessments to clients
 
 ### Anti-Abuse Measures
-```typescript
+\`\`\`typescript
 // Atomic usage increment prevents double-counting
 CREATE OR REPLACE FUNCTION increment_usage(user_uuid UUID)
 RETURNS INTEGER AS $$
@@ -380,7 +380,7 @@ BEGIN
   RETURN current_count;
 END;
 $$ LANGUAGE plpgsql;
-```
+\`\`\`
 
 ---
 
@@ -395,7 +395,7 @@ $$ LANGUAGE plpgsql;
 - **TPB Compliance**: Tax agents with expiring registrations/insurance
 
 ### Security Metrics
-```typescript
+\`\`\`typescript
 interface SecurityMetrics {
   totalUsers: number;
   mfaEnabled: number;
@@ -406,7 +406,7 @@ interface SecurityMetrics {
   tpbCompliant: number;
   insuranceCurrent: number;
 }
-```
+\`\`\`
 
 ### Automated Alerts
 - **Email Notifications**: Security team alerted for critical events
@@ -449,7 +449,7 @@ interface SecurityMetrics {
 - **Access Request Register**: APP 12 requests and fulfillment status
 
 ### Automated Compliance Checks
-```typescript
+\`\`\`typescript
 // Daily compliance validation
 const complianceChecks = {
   tpbRegistrationValid: checkAllTPBRegistrations(),
@@ -459,7 +459,7 @@ const complianceChecks = {
   consentValidity: auditConsentRecords(),
   rlsEnabled: verifyRowLevelSecurity()
 };
-```
+\`\`\`
 
 ---
 
@@ -467,7 +467,7 @@ const complianceChecks = {
 
 ### Security Component Integration
 
-```
+\`\`\`
 ┌─────────────────────────────────────────────────────────────┐
 │                     User Request                            │
 └────────────────────────┬────────────────────────────────────┘
@@ -536,11 +536,11 @@ const complianceChecks = {
 │  • OAIC notification triggering                             │
 │  • Security metrics reporting                               │
 └─────────────────────────────────────────────────────────────┘
-```
+\`\`\`
 
 ### Data Flow Example: Tax Agent Accessing Client Data
 
-```
+\`\`\`
 1. Tax agent logs in → MFA required → Session created
 2. Agent navigates to client list → Middleware validates session
 3. API route checks: Is user a tax agent? → RBAC check
@@ -556,14 +556,14 @@ const complianceChecks = {
 8. Client data displayed → Access logged with justification
 9. Agent downloads document → Time-limited URL generated
 10. Download logged → Audit trail complete
-```
+\`\`\`
 
 ---
 
 ## 15. Security Best Practices for Deployment
 
 ### Environment Variables
-```bash
+\`\`\`bash
 # NEVER commit these to version control
 SUPABASE_URL=https://[project-id].supabase.co
 SUPABASE_ANON_KEY=[public-anon-key]
@@ -571,7 +571,7 @@ SUPABASE_SERVICE_ROLE_KEY=[secret-service-key]  # Server-only
 BLOB_READ_WRITE_TOKEN=[vercel-blob-token]
 ENCRYPTION_KEY=[strong-random-key]              # For TFN encryption
 MFA_ISSUER=TaxPracticeApp
-```
+\`\`\`
 
 ### Production Checklist
 - [ ] Enable database point-in-time recovery (7-day retention)
@@ -602,7 +602,7 @@ MFA_ISSUER=TaxPracticeApp
 ### Security Test Cases
 
 #### Authentication Tests
-```typescript
+\`\`\`typescript
 // Test: User cannot access another user's data
 test('RLS prevents cross-user data access', async () => {
   const user1 = await createUser('user1@example.com');
@@ -633,10 +633,10 @@ test('Tax agent access limited to assigned clients', async () => {
   expect(accessible).toContain(client1.id);
   expect(accessible).not.toContain(client2.id);
 });
-```
+\`\`\`
 
 #### Audit Log Tests
-```typescript
+\`\`\`typescript
 // Test: Sensitive data access is logged
 test('TFN access creates audit log', async () => {
   const user = await createUser('user@example.com');
@@ -652,10 +652,10 @@ test('TFN access creates audit log', async () => {
   expect(logs.length).toBeGreaterThan(0);
   expect(logs[0].justification).toBe('Preparing tax return');
 });
-```
+\`\`\`
 
 #### Compliance Tests
-```typescript
+\`\`\`typescript
 // Test: Expired TPB registration blocks access
 test('Expired TPB registration denies client access', async () => {
   const agent = await createTaxAgent({
@@ -667,7 +667,7 @@ test('Expired TPB registration denies client access', async () => {
   
   expect(canAccess).toBe(false);
 });
-```
+\`\`\`
 
 ---
 

@@ -180,7 +180,7 @@ Professional tax practice application for Australian home office tax deduction c
 
 ## File Structure
 
-```
+\`\`\`
 app/
 ├── auth/                    # Authentication pages
 │   ├── login/
@@ -231,7 +231,7 @@ scripts/
 ├── 006_fix_rls_recursion.sql    # RLS fixes
 ├── 009_add_reference_docs_columns.sql # Schema updates
 └── 010_disable_reference_docs_rls.sql # Upload fixes
-```
+\`\`\`
 
 ---
 

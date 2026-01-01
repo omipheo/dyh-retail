@@ -63,29 +63,29 @@ The Home Business Wealth and Lifestyle Optimiser now includes an AI-powered syst
 ### Core Components
 
 **1. Document Analyzer (`lib/document-analyzer.ts`)**
-```
+\`\`\`
 - analyzeClientDocument(): AI analysis of individual documents
 - generateStrategy(): Cross-reference and strategy recommendation
 - generateInterimReport(): Professional report generation
-```
+\`\`\`
 
 **2. API Endpoint (`app/api/analyze/generate-strategy/route.ts`)**
-```
+\`\`\`
 - Fetches client and reference documents from Blob storage
 - Coordinates AI analysis pipeline
 - Returns complete strategy package
-```
+\`\`\`
 
 **3. Analysis Page (`app/admin/analyze/[id]/page.tsx`)**
-```
+\`\`\`
 - User interface for generating and viewing analysis
 - Tabbed interface: Report | Strategy | Calculations | Document Analysis
 - Download and export capabilities
-```
+\`\`\`
 
 ### Data Flow
 
-```
+\`\`\`
 Client Uploads Documents
         ↓
 Stored in Vercel Blob
@@ -107,7 +107,7 @@ Creates interim report
 Displays results to tax agent
         ↓
 Tax agent reviews and delivers to client
-```
+\`\`\`
 
 ---
 

@@ -24,26 +24,26 @@ The system supports multiple PDF conversion methods:
 For local development, install LibreOffice:
 
 **Windows:**
-```bash
+\`\`\`bash
 # Download and install from https://www.libreoffice.org/download/
 # Ensure LibreOffice is in your PATH
-```
+\`\`\`
 
 **macOS:**
-```bash
+\`\`\`bash
 brew install --cask libreoffice
-```
+\`\`\`
 
 **Linux:**
-```bash
+\`\`\`bash
 sudo apt-get update
 sudo apt-get install libreoffice
-```
+\`\`\`
 
 Then install the npm package:
-```bash
+\`\`\`bash
 pnpm install docx-pdf
-```
+\`\`\`
 
 ### Option 2: CloudConvert API (Recommended for Vercel Production)
 
@@ -52,9 +52,9 @@ For Vercel serverless deployment, use CloudConvert API:
 1. Sign up at https://cloudconvert.com/
 2. Get your API key from the dashboard
 3. Add to your Vercel environment variables:
-   ```
+   \`\`\`
    CLOUDCONVERT_API_KEY=your_api_key_here
-   ```
+   \`\`\`
 
 The system will automatically use CloudConvert if the API key is configured.
 
@@ -63,7 +63,7 @@ The system will automatically use CloudConvert if the API key is configured.
 For Vercel Pro or Enterprise, you can use Docker containers with LibreOffice:
 
 1. Create a Dockerfile:
-```dockerfile
+\`\`\`dockerfile
 FROM node:18-alpine
 RUN apk add --no-cache libreoffice
 WORKDIR /app
@@ -71,21 +71,21 @@ COPY package*.json ./
 RUN npm install
 COPY . .
 CMD ["npm", "start"]
-```
+\`\`\`
 
 2. Configure Vercel to use Docker containers
 
 ## Template File
 
 Place your Word template in:
-```
+\`\`\`
 public/templates/final_report.docx
-```
+\`\`\`
 
 Or use the fallback:
-```
+\`\`\`
 public/templates/word_corrected.docx
-```
+\`\`\`
 
 The system will automatically detect and use `final_report.docx` if it exists.
 
@@ -117,7 +117,7 @@ All fields are automatically mapped and formatted (currency, dates, etc.).
 **POST** `/api/generate-report`
 
 **Request Body:**
-```json
+\`\`\`json
 {
   "questionnaire1": {
     "q1_marital_status": "Married",
@@ -131,7 +131,7 @@ All fields are automatically mapped and formatted (currency, dates, etc.).
   },
   "clientName": "John Doe"
 }
-```
+\`\`\`
 
 **Response:**
 - Success: PDF file (or DOCX if PDF conversion fails)
@@ -198,4 +198,3 @@ For issues or questions:
 2. Verify environment variables are set correctly
 3. Test with sample questionnaire data
 4. Check CloudConvert API status if using cloud conversion
-
