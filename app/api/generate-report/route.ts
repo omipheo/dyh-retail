@@ -460,6 +460,43 @@ function cleanFragmentedPlaceholders(zip: PizZip): PizZip {
   return zip
 }
 
+function insertPageBreaks(zip: PizZip): PizZip {
+  console.log("[v0] 📄 Inserting page breaks...")
+  
+  const documentXml = zip.files["word/document.xml"]
+  if (!documentXml) {
+    console.warn("[v0] ⚠️  No document.xml found for page break insertion")
+    return zip
+  }
+
+  let xmlContent = documentXml.asText()
+  
+  // Replace {{PAGE_BREAK}} placeholder with Word page break XML
+  // The page break needs to be inside a <w:r> (run) element
+  const pageBreakXml = '<w:r><w:br w:type="page"/></w:r>'
+  
+  // Pattern to match {{PAGE_BREAK}} placeholder (may be split across XML tags)
+  // We'll look for the text "PAGE_BREAK" and replace the entire placeholder structure
+  const pageBreakPattern = /<w:t[^>]*>\{\{PAGE_BREAK\}\}<\/w:t>/g
+  xmlContent = xmlContent.replace(pageBreakPattern, (match) => {
+    console.log("[v0] 🔧 Inserting page break")
+    // Replace the entire <w:t>{{PAGE_BREAK}}</w:t> with page break XML
+    return pageBreakXml
+  })
+  
+  // Also handle cases where PAGE_BREAK might be split across tags
+  const splitPageBreakPattern = /<w:t[^>]*>\{\{PAGE<\/w:t>(?:<[^>]+>)*<w:t[^>]*>_BREAK\}\}<\/w:t>/g
+  xmlContent = xmlContent.replace(splitPageBreakPattern, (match) => {
+    console.log("[v0] 🔧 Inserting page break (split placeholder)")
+    return pageBreakXml
+  })
+  
+  // Update the document.xml with page breaks inserted
+  zip.file("word/document.xml", xmlContent)
+  
+  return zip
+}
+
 function mapQuestionnairesToTemplateData(questionnaire1: any, questionnaire2?: any): Record<string, any> {
   // Merge both questionnaires if provided
   const merged = { ...questionnaire1, ...(questionnaire2 || {}) }
@@ -800,6 +837,9 @@ function mapQuestionnairesToTemplateData(questionnaire1: any, questionnaire2?: a
   const businessUsePercentageDisplay = businessUsePercentageNum > 0 ? `${businessUsePercentageNum}%` : ""
   // Map all fields from both questionnaires to template placeholders
   return {
+    // Page break placeholder (will be replaced with actual page break XML)
+    PAGE_BREAK: "", // Empty string - actual page break is inserted via XML processing
+    
     // Client Information
     CLIENT_NAME: merged.client_name || merged.CLIENT_NAME || merged.q1_marital_status || "",
     CLIENT_FULL_NAME: merged.client_full_name || merged.CLIENT_FULL_NAME || merged.client_name || "",
@@ -1192,8 +1232,12 @@ export async function POST(request: NextRequest) {
     doc.render(questionnaireData)
     console.log("[v0] ✅ Document rendered successfully")
 
+    // Insert page breaks after rendering
+    console.log("[v0] 📄 Processing page breaks...")
+    const zipWithPageBreaks = insertPageBreaks(doc.getZip())
+
     console.log("[v0] 📦 Generating DOCX buffer...")
-    const docxBuffer = doc.getZip().generate({
+    const docxBuffer = zipWithPageBreaks.generate({
       type: "nodebuffer",
       compression: "DEFLATE",
     })
