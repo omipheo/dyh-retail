@@ -51,7 +51,7 @@ When a client submits their questionnaire or the system generates Interim Report
 
 ### Automated System Messages Include:
 
-```
+\`\`\`
 **AUTOMATED SYSTEM ALERT: Manual Review Required**
 
 **Client:** [Client Name] ([Client Email])
@@ -69,7 +69,7 @@ When a client submits their questionnaire or the system generates Interim Report
 
 **ACTION REQUIRED:**
 Please review this assessment manually and contact the client to obtain missing information or clarify discrepancies before proceeding with final report generation.
-```
+\`\`\`
 
 ## Message Priorities
 
@@ -132,7 +132,7 @@ Please review this assessment manually and contact the client to obtain missing 
 ## Database Schema
 
 ### Messages Table
-```sql
+\`\`\`sql
 CREATE TABLE messages (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   assessment_id UUID REFERENCES client_assessments(id),
@@ -148,7 +148,7 @@ CREATE TABLE messages (
   attachment_name TEXT,
   created_at TIMESTAMPTZ DEFAULT now()
 )
-```
+\`\`\`
 
 ## Message Types
 
