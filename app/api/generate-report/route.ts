@@ -542,8 +542,12 @@ function mapQuestionnairesToTemplateData(questionnaire1: any, questionnaire2?: a
     // Keep state and postcode together with a non-breaking space
     const restFormatted = rest.replace(/\b([A-Z]{2,3})\s+(\d{4})\b/g, "$1\u00A0$2")
 
-    // Return with an explicit line break between street and city/state/postcode
-    return `${line1},\n${restFormatted}`
+    // Add indentation to align second line with first line content
+    // "Address: " is 9 characters, so indent by 9 spaces to align continuation line
+    const indent = "                  " // 18 spaces to match "Address: " length
+
+    // Return with line break and indentation for the second line
+    return `${line1},\n${indent}${restFormatted}`
   }
 
   const hoursPerWeek = toNumber(
