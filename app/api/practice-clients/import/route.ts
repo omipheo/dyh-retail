@@ -1,5 +1,25 @@
-import { createServiceRoleClient } from "@/lib/supabase/service-role"
+import { createClient } from "@supabase/supabase-js"
 import { NextResponse } from "next/server"
+
+function getSupabaseAdmin() {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+
+  if (!supabaseUrl) {
+    throw new Error("Missing NEXT_PUBLIC_SUPABASE_URL environment variable")
+  }
+
+  if (!supabaseServiceKey) {
+    throw new Error("Missing SUPABASE_SERVICE_ROLE_KEY environment variable")
+  }
+
+  return createClient(supabaseUrl, supabaseServiceKey, {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false,
+    },
+  })
+}
 
 function parseCSVLine(line: string): string[] {
   const result: string[] = []
@@ -29,6 +49,25 @@ function parseCSVLine(line: string): string[] {
 }
 
 export async function POST(request: Request) {
+  let supabase
+  try {
+    supabase = getSupabaseAdmin()
+  } catch (envError) {
+    console.error("[v0] Environment variable error:", envError)
+    return NextResponse.json(
+      {
+        error: (envError as Error).message,
+        success: 0,
+        failed: 0,
+        updated: 0,
+        skipped: 0,
+        skippedRows: [],
+        errors: [{ row: 0, email: "N/A", error: (envError as Error).message }],
+      },
+      { status: 500 },
+    )
+  }
+
   try {
     const formData = await request.formData()
     const file = formData.get("file") as File
@@ -78,21 +117,13 @@ export async function POST(request: Request) {
       emailIndex,
       "type:",
       typeIndex,
-      "industry:",
-      industryIndex,
-      "xero:",
-      xeroIndex,
-      "abn:",
-      abnIndex,
       "status:",
       statusIndex,
     )
 
     if (nameIndex === -1) {
       return NextResponse.json(
-        {
-          error: "Missing required column 'Name'. Found headers: " + rawHeaders.join(", "),
-        },
+        { error: "Missing required column 'Name'. Found headers: " + rawHeaders.join(", ") },
         { status: 400 },
       )
     }
@@ -103,8 +134,6 @@ export async function POST(request: Request) {
     for (let i = 1; i < lines.length; i++) {
       const values = parseCSVLine(lines[i])
 
-      console.log(`[v0] Processing row ${i + 1}, parsed ${values.length} values (expected ~${rawHeaders.length})`)
-
       const name = nameIndex >= 0 ? values[nameIndex]?.trim().replace(/^"|"$/g, "") : ""
       const phone = phoneIndex >= 0 ? values[phoneIndex]?.trim() : ""
       const email = emailIndex >= 0 ? values[emailIndex]?.toLowerCase().trim() : ""
@@ -114,49 +143,28 @@ export async function POST(request: Request) {
       const abn = abnIndex >= 0 ? values[abnIndex]?.trim() : ""
       const rawStatus = statusIndex >= 0 ? values[statusIndex]?.toLowerCase().trim() : ""
 
-      console.log(
-        `[v0] Row ${i + 1} - Extracted: name="${name}" email="${email}" phone="${phone}" type="${rawType}" status="${rawStatus}"`,
-      )
-
       let clientType = rawType.toLowerCase()
       let finalStatus = rawStatus
 
-      // Check if Type contains status values (archived/active/inactive)
+      // Auto-detect and fix swapped Type/Status columns
       if (clientType === "archived" || clientType === "inactive" || clientType === "active") {
-        console.log(`[v0] Row ${i + 1} - Detected swapped Type/Status, fixing`)
-        // Type and Status are swapped - correct them
         const temp = clientType
         clientType = rawStatus
         finalStatus = temp
       }
 
-      // Check if Status contains type values (individual/company/trust/etc)
       if (
-        finalStatus === "individual" ||
-        finalStatus === "company" ||
-        finalStatus === "trust" ||
-        finalStatus === "smsf" ||
-        finalStatus === "partnership" ||
-        finalStatus === "sole trader" ||
-        finalStatus === "sole_trader"
+        ["individual", "company", "trust", "smsf", "partnership", "sole trader", "sole_trader"].includes(finalStatus)
       ) {
-        console.log(`[v0] Row ${i + 1} - Detected swapped Status/Type, fixing`)
-        // Status and Type are swapped - correct them
         const temp = finalStatus
         finalStatus = clientType
         clientType = temp
       }
 
-      console.log(`[v0] Row ${i + 1} - After swap detection: type="${clientType}" status="${finalStatus}"`)
-
       // Normalize client type
-      if (clientType === "individual") clientType = "individual"
-      else if (clientType === "sole trader") clientType = "sole_trader"
-      else if (clientType === "partnership") clientType = "partnership"
-      else if (clientType === "company") clientType = "company"
-      else if (clientType === "trust") clientType = "trust"
+      if (clientType === "sole trader") clientType = "sole_trader"
       else if (clientType === "smsf" || clientType === "self managed superannuation fund") clientType = "smsf"
-      else clientType = rawType.toLowerCase().replace(/\s+/g, "_")
+      else clientType = clientType.replace(/\s+/g, "_")
 
       // Normalize status
       if (finalStatus) {
@@ -169,7 +177,6 @@ export async function POST(request: Request) {
       }
 
       if (!name) {
-        console.log(`[v0] SKIPPING row ${i + 1} - Missing name`)
         skippedRows.push({ row: i + 1, reason: "Missing name", name: "(empty)" })
         continue
       }
@@ -187,9 +194,7 @@ export async function POST(request: Request) {
       })
     }
 
-    const supabase = createServiceRoleClient()
-
-    console.log("[v0] Importing", clients.length, "clients")
+    console.log("[v0] Processing", clients.length, "clients")
 
     const results = {
       success: 0,
@@ -200,15 +205,30 @@ export async function POST(request: Request) {
       errors: [] as { row: number; email: string; error: string }[],
     }
 
-    for (let index = 0; index < clients.length; index++) {
-      const client = clients[index]
+    const { error: testError } = await supabase.from("dyh_practice_clients").select("id").limit(1)
+    if (testError) {
+      console.error("[v0] Database connection test failed:", testError)
+      return NextResponse.json(
+        {
+          error: `Database connection failed: ${testError.message}`,
+          success: 0,
+          failed: clients.length,
+          updated: 0,
+          skipped: results.skipped,
+          skippedRows: results.skippedRows,
+          errors: [{ row: 0, email: "N/A", error: `Database error: ${testError.message}` }],
+        },
+        { status: 500 },
+      )
+    }
+
+    for (const client of clients) {
       try {
         let cleanEmail = client.email
         let cleanPhone = client.phone_number
 
-        // Detect if email looks like a phone number (numbers and +)
+        // Detect swapped email/phone
         if (cleanEmail && /^[\d\s+()-]+$/.test(cleanEmail)) {
-          console.log(`[v0] Row ${client.rowNumber} - Email looks like phone, swapping`)
           const temp = cleanEmail
           cleanEmail = cleanPhone
           cleanPhone = temp
@@ -216,7 +236,6 @@ export async function POST(request: Request) {
 
         // Validate email format
         if (cleanEmail && !cleanEmail.includes("@")) {
-          console.log(`[v0] Row ${client.rowNumber} - Invalid email format: ${cleanEmail}`)
           cleanEmail = null
         }
 
@@ -224,7 +243,7 @@ export async function POST(request: Request) {
           full_name: client.full_name,
           email: cleanEmail,
           phone_number: cleanPhone,
-          status: client.status.toLowerCase() === "archived" ? "archived" : "active", // normalize status
+          status: client.status.toLowerCase() === "archived" ? "archived" : "active",
           questionnaire_data: {
             client_type: client.client_type,
             industry_classification: client.industry_classification,
@@ -233,61 +252,34 @@ export async function POST(request: Request) {
           },
         }
 
-        console.log(`[v0] Row ${client.rowNumber} - Processing:`, {
-          name: client.full_name,
-          email: clientData.email,
-          phone: clientData.phone_number,
-          status: clientData.status,
-          type: client.client_type,
-        })
-
+        // Check if client already exists
         const { data: existing, error: checkError } = await supabase
           .from("dyh_practice_clients")
-          .select("id, status, email")
+          .select("id, status")
           .eq("full_name", client.full_name)
           .maybeSingle()
 
         if (checkError) {
-          console.error(`[v0] Row ${client.rowNumber} - Check failed:`, checkError)
+          console.error(`[v0] Row ${client.rowNumber} - Check error:`, checkError.message)
           results.failed++
-          results.errors.push({
-            row: client.rowNumber,
-            email: client.email,
-            error: checkError.message,
-          })
+          results.errors.push({ row: client.rowNumber, email: client.email || "", error: checkError.message })
           continue
         }
 
         if (existing) {
-          // Client exists - update status if different
-          console.log(
-            `[v0] Row ${client.rowNumber} - Client "${client.full_name}" already exists (id: ${existing.id}, status: ${existing.status})`,
-          )
-
           if (existing.status !== clientData.status) {
-            console.log(
-              `[v0] Row ${client.rowNumber} - Updating existing client status from ${existing.status} to ${clientData.status}`,
-            )
             const { error: updateError } = await supabase
               .from("dyh_practice_clients")
               .update({ status: clientData.status })
               .eq("id", existing.id)
 
             if (updateError) {
-              console.error(`[v0] Row ${client.rowNumber} - Update FAILED:`, updateError.message)
-              console.error(`[v0] Full error:`, JSON.stringify(updateError, null, 2))
               results.failed++
-              results.errors.push({
-                row: client.rowNumber,
-                email: client.email,
-                error: `${updateError.message}${updateError.hint ? ` (Hint: ${updateError.hint})` : ""}${updateError.code ? ` [Code: ${updateError.code}]` : ""}`,
-              })
+              results.errors.push({ row: client.rowNumber, email: client.email || "", error: updateError.message })
             } else {
-              console.log(`[v0] Row ${client.rowNumber} - Update SUCCESS`)
               results.updated++
             }
           } else {
-            console.log(`[v0] Row ${client.rowNumber} - Client already exists with same status, skipping`)
             skippedRows.push({
               row: client.rowNumber,
               reason: `Already exists as ${existing.status}`,
@@ -296,32 +288,19 @@ export async function POST(request: Request) {
             results.skipped++
           }
         } else {
-          // New client - insert
-          console.log(`[v0] Row ${client.rowNumber} - Inserting new client`)
           const { error: insertError } = await supabase.from("dyh_practice_clients").insert(clientData)
 
           if (insertError) {
-            console.error(`[v0] Row ${client.rowNumber} - Insert FAILED:`, insertError.message, insertError)
-            console.error(`[v0] Full error:`, JSON.stringify(insertError, null, 2))
+            console.error(`[v0] Row ${client.rowNumber} - Insert error:`, insertError.message)
             results.failed++
-            results.errors.push({
-              row: client.rowNumber,
-              email: client.email,
-              error: `${insertError.message}${insertError.hint ? ` (Hint: ${insertError.hint})` : ""}${insertError.code ? ` [Code: ${insertError.code}]` : ""}`,
-            })
+            results.errors.push({ row: client.rowNumber, email: client.email || "", error: insertError.message })
           } else {
-            console.log(`[v0] Row ${client.rowNumber} - Insert SUCCESS`)
             results.success++
           }
         }
       } catch (err) {
-        console.error(`[v0] Row ${client.rowNumber} - Exception:`, err)
         results.failed++
-        results.errors.push({
-          row: client.rowNumber,
-          email: client.email,
-          error: (err as Error).message,
-        })
+        results.errors.push({ row: client.rowNumber, email: client.email || "", error: (err as Error).message })
       }
     }
 
@@ -330,6 +309,8 @@ export async function POST(request: Request) {
       results.success,
       "Failed:",
       results.failed,
+      "Updated:",
+      results.updated,
       "Skipped:",
       results.skipped,
     )
@@ -337,6 +318,17 @@ export async function POST(request: Request) {
     return NextResponse.json(results)
   } catch (error) {
     console.error("[v0] Import failed:", error)
-    return NextResponse.json({ error: "Import failed: " + (error as Error).message }, { status: 500 })
+    return NextResponse.json(
+      {
+        error: "Import failed: " + (error as Error).message,
+        success: 0,
+        failed: 0,
+        updated: 0,
+        skipped: 0,
+        skippedRows: [],
+        errors: [{ row: 0, email: "N/A", error: (error as Error).message }],
+      },
+      { status: 500 },
+    )
   }
 }

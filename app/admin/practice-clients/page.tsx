@@ -1,12 +1,25 @@
-import { getServiceRoleClient } from "@/lib/supabase/service-role"
+import { createClient } from "@supabase/supabase-js"
 import { Button } from "@/components/ui/button"
 import { ArrowLeft, Download, UserPlus, Users, Upload } from "lucide-react"
 import Link from "next/link"
 import { Suspense } from "react"
 import { PracticeClientsContent } from "./practice-clients-content"
 
+function getSupabaseAdmin() {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+
+  if (!supabaseUrl || !supabaseServiceKey) {
+    throw new Error("Missing Supabase environment variables")
+  }
+
+  return createClient(supabaseUrl, supabaseServiceKey, {
+    auth: { autoRefreshToken: false, persistSession: false },
+  })
+}
+
 export default async function PracticeClientsPage() {
-  const supabase = getServiceRoleClient()
+  const supabase = getSupabaseAdmin()
 
   const { data: clients, error } = await supabase
     .from("dyh_practice_clients")
