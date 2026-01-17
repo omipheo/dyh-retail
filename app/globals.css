@@ -4,31 +4,31 @@
 @custom-variant dark (&:is(.dark *));
 
 :root {
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
+  --background: oklch(0.98 0 0);
+  --foreground: oklch(0.15 0 0);
   --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
+  --card-foreground: oklch(0.15 0 0);
   --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
+  --popover-foreground: oklch(0.15 0 0);
+  --primary: oklch(0.18 0 0);
+  --primary-foreground: oklch(0.98 0 0);
+  --secondary: oklch(0.95 0 0);
+  --secondary-foreground: oklch(0.18 0 0);
+  --muted: oklch(0.93 0 0);
+  --muted-foreground: oklch(0.5 0 0);
+  --accent: oklch(0.92 0 0);
+  --accent-foreground: oklch(0.18 0 0);
   --destructive: oklch(0.577 0.245 27.325);
-  --destructive-foreground: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
+  --destructive-foreground: oklch(0.98 0 0);
+  --border: oklch(0.88 0 0);
+  --input: oklch(0.88 0 0);
+  --ring: oklch(0.18 0 0);
   --chart-1: oklch(0.646 0.222 41.116);
   --chart-2: oklch(0.6 0.118 184.704);
   --chart-3: oklch(0.398 0.07 227.392);
   --chart-4: oklch(0.828 0.189 84.429);
   --chart-5: oklch(0.769 0.188 70.08);
-  --radius: 0.625rem;
+  --radius: 0.5rem;
   --sidebar: oklch(0.985 0 0);
   --sidebar-foreground: oklch(0.145 0 0);
   --sidebar-primary: oklch(0.205 0 0);
@@ -40,25 +40,25 @@
 }
 
 .dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.145 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.145 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.985 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
+  --background: oklch(0.12 0 0);
+  --foreground: oklch(0.98 0 0);
+  --card: oklch(0.16 0 0);
+  --card-foreground: oklch(0.98 0 0);
+  --popover: oklch(0.16 0 0);
+  --popover-foreground: oklch(0.98 0 0);
+  --primary: oklch(0.98 0 0);
+  --primary-foreground: oklch(0.12 0 0);
+  --secondary: oklch(0.22 0 0);
+  --secondary-foreground: oklch(0.98 0 0);
+  --muted: oklch(0.25 0 0);
+  --muted-foreground: oklch(0.65 0 0);
+  --accent: oklch(0.28 0 0);
+  --accent-foreground: oklch(0.98 0 0);
   --destructive: oklch(0.396 0.141 25.723);
-  --destructive-foreground: oklch(0.637 0.237 25.331);
-  --border: oklch(0.269 0 0);
-  --input: oklch(0.269 0 0);
-  --ring: oklch(0.439 0 0);
+  --destructive-foreground: oklch(0.98 0 0);
+  --border: oklch(0.25 0 0);
+  --input: oklch(0.25 0 0);
+  --ring: oklch(0.98 0 0);
   --chart-1: oklch(0.488 0.243 264.376);
   --chart-2: oklch(0.696 0.17 162.48);
   --chart-3: oklch(0.769 0.188 70.08);
@@ -76,6 +76,8 @@
 
 @theme inline {
   /* optional: --font-sans, --font-serif, --font-mono if they are applied in the layout.tsx */
+  --font-sans: "Geist", "Geist Fallback";
+  --font-mono: "Geist Mono", "Geist Mono Fallback";
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
@@ -123,85 +125,239 @@
   }
 }
 
-/* Adding print styles for PDF generation */
-@media print {
-  @page {
-    size: A4;
-    margin: 1.5cm 2cm;
+/* Define animation classes directly instead of as Tailwind utilities to avoid parsing errors */
+@layer components {
+  .animate-in {
+    animation-duration: 0.2s;
+    animation-fill-mode: both;
   }
 
-  body {
-    print-color-adjust: exact;
-    -webkit-print-color-adjust: exact;
+  .animate-out {
+    animation-duration: 0.2s;
+    animation-fill-mode: both;
   }
 
-  /* Added page-break class for section breaks */
-  .page-break {
-    page-break-after: always;
-    break-after: page;
+  .fade-in-0 {
+    animation-name: fadeIn;
   }
 
-  .page-break-after {
-    page-break-after: always;
-    break-after: page;
+  .fade-out-0 {
+    animation-name: fadeOut;
   }
 
-  .page-break-before {
-    page-break-before: always;
-    break-before: page;
+  .fade-out-80 {
+    animation-name: fadeOut80;
   }
 
-  /* Added print-only class to show footer only in print */
-  .print-only {
-    display: block !important;
+  .zoom-in-95 {
+    animation-name: zoomIn95;
   }
 
-  .print\:hidden {
-    display: none !important;
+  .zoom-out-95 {
+    animation-name: zoomOut95;
   }
 
-  .print\:p-0 {
-    padding: 0 !important;
+  .slide-in-from-top-2 {
+    animation-name: slideInFromTop;
   }
 
-  /* Ensure colors and backgrounds print correctly */
-  .bg-blue-50,
-  .bg-green-50,
-  .bg-yellow-50,
-  .bg-red-50,
-  .bg-gray-50,
-  .bg-gray-100,
-  .bg-muted,
-  .border-blue-500,
-  .border-green-300,
-  .border-yellow-300,
-  .border-red-300,
-  .border-purple-500 {
-    print-color-adjust: exact;
-    -webkit-print-color-adjust: exact;
+  .slide-in-from-bottom-2 {
+    animation-name: slideInFromBottom;
   }
 
-  /* Prevent orphans and widows for better readability */
-  p,
-  li {
-    orphans: 3;
-    widows: 3;
+  .slide-in-from-left-2 {
+    animation-name: slideInFromLeft;
   }
 
-  /* Keep tables together when possible */
-  table {
-    page-break-inside: avoid;
+  .slide-in-from-right-2 {
+    animation-name: slideInFromRight;
   }
 
-  /* Hide scrollbars in print */
-  ::-webkit-scrollbar {
-    display: none;
+  .slide-in-from-top {
+    animation-name: slideInFromTop;
+  }
+
+  .slide-in-from-bottom {
+    animation-name: slideInFromBottom;
+  }
+
+  .slide-in-from-left {
+    animation-name: slideInFromLeft;
+  }
+
+  .slide-in-from-right {
+    animation-name: slideInFromRight;
+  }
+
+  .slide-in-from-top-full {
+    animation-name: slideInFromTopFull;
+  }
+
+  .slide-in-from-bottom-full {
+    animation-name: slideInFromBottomFull;
+  }
+
+  .slide-out-to-top {
+    animation-name: slideOutToTop;
+  }
+
+  .slide-out-to-bottom {
+    animation-name: slideOutToBottom;
+  }
+
+  .slide-out-to-left {
+    animation-name: slideOutToLeft;
+  }
+
+  .slide-out-to-right {
+    animation-name: slideOutToRight;
+  }
+
+  .slide-out-to-right-full {
+    animation-name: slideOutToRightFull;
   }
 }
 
-/* Hide print-only elements on screen */
-@media screen {
-  .print-only {
-    display: none !important;
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes fadeOut {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes fadeOut80 {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0.2;
+  }
+}
+
+@keyframes zoomIn95 {
+  from {
+    transform: scale(0.95);
+  }
+  to {
+    transform: scale(1);
+  }
+}
+
+@keyframes zoomOut95 {
+  from {
+    transform: scale(1);
+  }
+  to {
+    transform: scale(0.95);
+  }
+}
+
+@keyframes slideInFromTop {
+  from {
+    transform: translateY(-0.5rem);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideInFromBottom {
+  from {
+    transform: translateY(0.5rem);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideInFromLeft {
+  from {
+    transform: translateX(-0.5rem);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+@keyframes slideInFromRight {
+  from {
+    transform: translateX(0.5rem);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+@keyframes slideInFromTopFull {
+  from {
+    transform: translateY(-100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideInFromBottomFull {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideOutToTop {
+  from {
+    transform: translateY(0);
+  }
+  to {
+    transform: translateY(-0.5rem);
+  }
+}
+
+@keyframes slideOutToBottom {
+  from {
+    transform: translateY(0);
+  }
+  to {
+    transform: translateY(0.5rem);
+  }
+}
+
+@keyframes slideOutToLeft {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-100%);
+  }
+}
+
+@keyframes slideOutToRight {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(100%);
+  }
+}
+
+@keyframes slideOutToRightFull {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(100%);
   }
 }

@@ -6,7 +6,7 @@ export const DEMO_CLIENTS = {
     business_type: "IT Consulting & Web Development",
     property_address: "45 Collins Street, MELBOURNE VIC 3000",
     taxable_income: 200000,
-    age: 42,
+    age: 33,
     mortgage_balance: 765000,
     property_value: 1080000,
     building_value: 540000,
