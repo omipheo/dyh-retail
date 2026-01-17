@@ -330,16 +330,29 @@ export default function GetStartedPage() {
   const handleVideoEnd = useCallback(() => {
     if (videoHasEnded.current) return
     videoHasEnded.current = true
-    setShowVideoOverlay(false)
-    setShowButterfly(false)
+    // Show butterfly first
+    setShowButterfly(true)
+    // Wait 2 seconds, then hide the entire overlay
+    setTimeout(() => {
+      setShowVideoOverlay(false)
+      setShowButterfly(false)
+    }, 2000)
   }, [])
 
-  const handleSkipVideo = () => {
+  const handleSkipVideo = useCallback(() => {
     if (videoHasEnded.current) return
     videoHasEnded.current = true
-    setShowVideoOverlay(false)
-    setShowButterfly(false)
-  }
+    if (videoPlayer) {
+      videoPlayer.stopVideo()
+    }
+    // Show butterfly first
+    setShowButterfly(true)
+    // Wait 2 seconds, then hide the entire overlay
+    setTimeout(() => {
+      setShowVideoOverlay(false)
+      setShowButterfly(false)
+    }, 2000)
+  }, [videoPlayer])
 
   const handleVideoReady = (event: YouTubeEvent) => {
     setVideoPlayer(event.target)
