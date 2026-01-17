@@ -3,7 +3,13 @@ import { getServiceRoleClient } from "@/lib/supabase/service-role"
 
 export async function POST() {
   try {
-    const supabase = getServiceRoleClient()
+    let supabase
+    try {
+      supabase = getServiceRoleClient()
+    } catch (e) {
+      console.error("[v0] Failed to create service role client:", e)
+      return NextResponse.json({ error: "Database connection failed" }, { status: 500 })
+    }
 
     const { data: allClients, error: fetchError } = await supabase
       .from("dyh_practice_clients")
@@ -11,8 +17,8 @@ export async function POST() {
       .order("created_at", { ascending: true })
 
     if (fetchError) {
-      console.error("Error fetching clients:", fetchError)
-      return NextResponse.json({ error: "Failed to fetch clients" }, { status: 500 })
+      console.error("[v0] Error fetching clients:", fetchError)
+      return NextResponse.json({ error: fetchError.message || "Failed to fetch clients" }, { status: 500 })
     }
 
     const seen = new Map<string, { id: string; name: string; email: string }>()
@@ -23,7 +29,6 @@ export async function POST() {
 
       if (seen.has(key)) {
         const original = seen.get(key)!
-        // This is a duplicate
         duplicates.push({
           id: client.id,
           name: client.full_name,
@@ -31,7 +36,6 @@ export async function POST() {
           reason: `Duplicate of ${original.name} (ID: ${original.id.substring(0, 8)}...)`,
         })
       } else {
-        // First occurrence, keep it
         seen.set(key, { id: client.id, name: client.full_name, email: client.email || "" })
       }
     }
@@ -41,18 +45,21 @@ export async function POST() {
       const { error: deleteError } = await supabase.from("dyh_practice_clients").delete().in("id", duplicateIds)
 
       if (deleteError) {
-        console.error("Error deleting duplicates:", deleteError)
-        return NextResponse.json({ error: "Failed to delete duplicates" }, { status: 500 })
+        console.error("[v0] Error deleting duplicates:", deleteError)
+        return NextResponse.json({ error: deleteError.message || "Failed to delete duplicates" }, { status: 500 })
       }
     }
 
     return NextResponse.json({
       deleted: duplicates.length,
       remaining: (allClients?.length || 0) - duplicates.length,
-      duplicates: duplicates, // Return list of deleted duplicates
+      duplicates: duplicates,
     })
   } catch (error) {
-    console.error("Error in remove-duplicates:", error)
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
+    console.error("[v0] Error in remove-duplicates:", error)
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : "Internal server error" },
+      { status: 500 },
+    )
   }
 }

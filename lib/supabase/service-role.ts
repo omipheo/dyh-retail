@@ -1,20 +1,27 @@
-import { createClient } from "@supabase/supabase-js"
+import { createClient, type SupabaseClient } from "@supabase/supabase-js"
 
-export function createServiceRoleClient() {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-  const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
+let serviceRoleClient: SupabaseClient | null = null
 
-  console.log("[v0] Creating service role client")
-  console.log("[v0] URL:", supabaseUrl)
-  console.log("[v0] Service key exists:", !!supabaseServiceKey)
-  console.log("[v0] Service key starts with:", supabaseServiceKey?.substring(0, 20))
+export function getServiceRoleClient(): SupabaseClient {
+  if (serviceRoleClient) {
+    return serviceRoleClient
+  }
 
-  return createClient(supabaseUrl, supabaseServiceKey, {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+
+  if (!supabaseUrl || !supabaseServiceKey) {
+    throw new Error("Missing Supabase environment variables")
+  }
+
+  serviceRoleClient = createClient(supabaseUrl, supabaseServiceKey, {
     auth: {
       autoRefreshToken: false,
       persistSession: false,
     },
   })
+
+  return serviceRoleClient
 }
 
-export const getServiceRoleClient = createServiceRoleClient
+export const createServiceRoleClient = getServiceRoleClient
