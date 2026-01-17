@@ -1,48 +1,20 @@
-import { redirect } from 'next/navigation';
-import { createClient } from "@/lib/supabase/server";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { ArrowLeft, Search } from 'lucide-react';
-import Link from "next/link";
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Input } from "@/components/ui/input"
+import { ArrowLeft, Search } from "lucide-react"
+import Link from "next/link"
+import { getServiceRoleClient } from "@/lib/supabase/service-role"
 
 export default async function ClientsPage() {
-  const supabase = await createClient();
+  const supabase = getServiceRoleClient()
 
-  const { data, error } = await supabase.auth.getUser();
-  if (error || !data?.user) {
-    redirect("/auth/login");
-  }
-
-  // Get user profile and check if tax agent
-  const { data: profile } = await supabase
-    .from("profiles")
+  const { data: clients, error } = await supabase
+    .from("dyh_practice_clients")
     .select("*")
-    .eq("id", data.user.id)
-    .single();
+    .order("full_name", { ascending: true })
 
-  if (profile?.role !== "tax_agent") {
-    redirect("/dashboard");
-  }
-
-  // Get all clients (end users)
-  const { data: clients } = await supabase
-    .from("profiles")
-    .select("*")
-    .eq("role", "end_user")
-    .order("created_at", { ascending: false });
-
-  // Get assessment counts for each client
-  const clientsWithCounts = await Promise.all(
-    (clients || []).map(async (client) => {
-      const { count } = await supabase
-        .from("questionnaire_responses")
-        .select("*", { count: 'exact', head: true })
-        .eq("user_id", client.id);
-      
-      return { ...client, assessmentCount: count || 0 };
-    })
-  );
+  console.log("[v0] All Clients page - fetched count:", clients?.length || 0)
+  console.log("[v0] All Clients page - error:", error)
 
   return (
     <div className="min-h-screen bg-background">
@@ -65,17 +37,14 @@ export default async function ClientsPage() {
           <div className="mb-6">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Search clients by name or email..."
-                className="pl-10"
-              />
+              <Input placeholder="Search clients by name or email..." className="pl-10" />
             </div>
           </div>
 
           {/* Clients List */}
-          {clientsWithCounts && clientsWithCounts.length > 0 ? (
+          {clients && clients.length > 0 ? (
             <div className="grid gap-4">
-              {clientsWithCounts.map((client) => (
+              {clients.map((client) => (
                 <Card key={client.id}>
                   <CardHeader>
                     <div className="flex items-start justify-between">
@@ -84,9 +53,9 @@ export default async function ClientsPage() {
                         <CardDescription>{client.email}</CardDescription>
                       </div>
                       <div className="text-right">
-                        <p className="text-sm font-medium">{client.assessmentCount} assessments</p>
+                        <p className="text-sm font-medium capitalize">{client.status}</p>
                         <p className="text-xs text-muted-foreground">
-                          Joined {new Date(client.created_at).toLocaleDateString()}
+                          Since {new Date(client.created_at).toLocaleDateString()}
                         </p>
                       </div>
                     </div>
@@ -94,10 +63,7 @@ export default async function ClientsPage() {
                   <CardContent>
                     <div className="flex gap-2">
                       <Button asChild variant="outline" size="sm">
-                        <Link href={`/admin/clients/${client.id}`}>View Profile</Link>
-                      </Button>
-                      <Button asChild variant="outline" size="sm">
-                        <Link href={`/admin/clients/${client.id}/assessments`}>View Assessments</Link>
+                        <Link href={`/admin/practice-clients/${client.id}`}>View Profile</Link>
                       </Button>
                     </div>
                   </CardContent>
@@ -114,5 +80,5 @@ export default async function ClientsPage() {
         </div>
       </div>
     </div>
-  );
+  )
 }

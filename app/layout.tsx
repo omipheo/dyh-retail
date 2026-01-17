@@ -15,9 +15,9 @@ const geistMono = Geist_Mono({
 })
 
 export const metadata: Metadata = {
-  title: "Home Business Wealth and Lifestyle Optimiser | ATO Compliant Tax Calculations",
+  title: "Tax Practice Portal | Client Management System",
   description:
-    "Optimise your home business tax deductions as you enhance your business and personal wealth and your lifestyle with confidence. ATO-compliant calculations based on our Amazon #1 bestselling book 'Deduct Your Home' and private ATO correspondence.",
+    "Professional tax agent portal for managing clients, assessments, and generating ATO-compliant home business tax reports.",
   generator: "v0.app",
   icons: {
     icon: [

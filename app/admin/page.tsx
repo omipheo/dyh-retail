@@ -2,7 +2,7 @@ import { redirect } from "next/navigation"
 import { createClient } from "@/lib/supabase/server"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Users, FileText, Upload, Settings } from "lucide-react"
+import { Users, FileText, Calendar, CheckSquare, AlertCircle, MessageSquare } from "lucide-react"
 import Link from "next/link"
 
 export default async function AdminDashboardPage() {
@@ -27,19 +27,28 @@ export default async function AdminDashboardPage() {
     .eq("role", "end_user")
 
   const { count: totalAssessments } = await supabase
-    .from("questionnaire_responses")
+    .from("client_assessments")
     .select("*", { count: "exact", head: true })
 
   const { count: completedAssessments } = await supabase
-    .from("questionnaire_responses")
+    .from("client_assessments")
     .select("*", { count: "exact", head: true })
-    .eq("status", "completed")
+    .eq("completed", true)
+
+  const { count: totalProspects } = await supabase
+    .from("dyh_explorer_prospects")
+    .select("*", { count: "exact", head: true })
+    .eq("status", "new")
+
+  const { count: convertedClients } = await supabase
+    .from("dyh_practice_clients")
+    .select("*", { count: "exact", head: true })
 
   const { data: recentAssessments } = await supabase
-    .from("questionnaire_responses")
+    .from("client_assessments")
     .select(`
       *,
-      profiles!questionnaire_responses_user_id_fkey(full_name, email)
+      profiles!client_assessments_user_id_fkey(full_name, email)
     `)
     .order("created_at", { ascending: false })
     .limit(5)
@@ -53,9 +62,6 @@ export default async function AdminDashboardPage() {
             <p className="text-sm text-muted-foreground">Tax Agent Portal</p>
           </div>
           <div className="flex items-center gap-4">
-            <Button variant="outline" asChild>
-              <Link href="/dashboard">Client View</Link>
-            </Button>
             <span className="text-sm text-muted-foreground">{profile?.full_name || data.user.email}</span>
           </div>
         </div>
@@ -103,12 +109,25 @@ export default async function AdminDashboardPage() {
           <Card className="hover:shadow-lg transition-shadow cursor-pointer">
             <CardHeader>
               <Users className="h-8 w-8 mb-2 text-primary" />
-              <CardTitle>View All Clients</CardTitle>
+              <CardTitle>Prospects</CardTitle>
             </CardHeader>
             <CardContent>
-              <CardDescription>Manage client profiles and information</CardDescription>
+              <CardDescription>DYH Explorer prospects awaiting conversion</CardDescription>
               <Button asChild className="mt-4 w-full">
-                <Link href="/admin/clients">View Clients</Link>
+                <Link href="/admin/prospects">View Prospects</Link>
+              </Button>
+            </CardContent>
+          </Card>
+
+          <Card className="hover:shadow-lg transition-shadow cursor-pointer">
+            <CardHeader>
+              <Users className="h-8 w-8 mb-2 text-primary" />
+              <CardTitle>Practice Clients</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <CardDescription>Converted clients with Final Reports</CardDescription>
+              <Button asChild className="mt-4 w-full">
+                <Link href="/admin/practice-clients">View Clients</Link>
               </Button>
             </CardContent>
           </Card>
@@ -116,38 +135,77 @@ export default async function AdminDashboardPage() {
           <Card className="hover:shadow-lg transition-shadow cursor-pointer">
             <CardHeader>
               <FileText className="h-8 w-8 mb-2 text-primary" />
-              <CardTitle>All Assessments</CardTitle>
+              <CardTitle>Form Submissions</CardTitle>
             </CardHeader>
             <CardContent>
-              <CardDescription>View and manage all client assessments</CardDescription>
+              <CardDescription>View completed questionnaires</CardDescription>
               <Button asChild className="mt-4 w-full">
-                <Link href="/admin/assessments">View All</Link>
+                <Link href="/admin/submissions">View Submissions</Link>
               </Button>
             </CardContent>
           </Card>
 
           <Card className="hover:shadow-lg transition-shadow cursor-pointer">
             <CardHeader>
-              <Upload className="h-8 w-8 mb-2 text-primary" />
-              <CardTitle>Reference Docs</CardTitle>
+              <Calendar className="h-8 w-8 mb-2 text-primary" />
+              <CardTitle>ATO Schedule</CardTitle>
             </CardHeader>
             <CardContent>
-              <CardDescription>Upload ATO guides and resources</CardDescription>
+              <CardDescription>Compliance calendar and reminders</CardDescription>
               <Button asChild className="mt-4 w-full">
-                <Link href="/admin/reference-docs">Manage Docs</Link>
+                <Link href="/admin/ato-schedule">View Schedule</Link>
               </Button>
             </CardContent>
           </Card>
 
           <Card className="hover:shadow-lg transition-shadow cursor-pointer">
             <CardHeader>
-              <Settings className="h-8 w-8 mb-2 text-primary" />
-              <CardTitle>Settings</CardTitle>
+              <CheckSquare className="h-8 w-8 mb-2 text-primary" />
+              <CardTitle>To-Do List</CardTitle>
             </CardHeader>
             <CardContent>
-              <CardDescription>Configure system preferences</CardDescription>
+              <CardDescription>Task management with urgency levels</CardDescription>
+              <Button asChild className="mt-4 w-full">
+                <Link href="/admin/todos">View Tasks</Link>
+              </Button>
+            </CardContent>
+          </Card>
+
+          <Card className="hover:shadow-lg transition-shadow cursor-pointer">
+            <CardHeader>
+              <AlertCircle className="h-8 w-8 mb-2 text-primary" />
+              <CardTitle>Complaints Register</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <CardDescription>Track and manage client complaints</CardDescription>
+              <Button asChild className="mt-4 w-full">
+                <Link href="/admin/complaints">View Complaints</Link>
+              </Button>
+            </CardContent>
+          </Card>
+
+          <Card className="hover:shadow-lg transition-shadow cursor-pointer">
+            <CardHeader>
+              <MessageSquare className="h-8 w-8 mb-2 text-primary" />
+              <CardTitle>Client Follow-Ups</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <CardDescription>Send and track client communications</CardDescription>
               <Button asChild variant="outline" className="mt-4 w-full bg-transparent">
-                <Link href="/settings">Settings</Link>
+                <Link href="/admin/follow-ups">Manage Follow-Ups</Link>
+              </Button>
+            </CardContent>
+          </Card>
+
+          <Card className="hover:shadow-lg transition-shadow cursor-pointer">
+            <CardHeader>
+              <Users className="h-8 w-8 mb-2 text-primary" />
+              <CardTitle>Integration Status</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <CardDescription>Monitor DYH Explorer integration</CardDescription>
+              <Button asChild variant="outline" className="mt-4 w-full bg-transparent">
+                <Link href="/admin/integration-status">Check Status</Link>
               </Button>
             </CardContent>
           </Card>
@@ -171,14 +229,12 @@ export default async function AdminDashboardPage() {
                       </div>
                       <span
                         className={`text-xs px-3 py-1 rounded-full font-medium ${
-                          assessment.status === "completed"
+                          assessment.completed
                             ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300"
-                            : assessment.status === "draft"
-                              ? "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300"
-                              : "bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300"
+                            : "bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300"
                         }`}
                       >
-                        {assessment.status}
+                        {assessment.completed ? "Completed" : "Pending"}
                       </span>
                     </div>
                   </CardHeader>

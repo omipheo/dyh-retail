@@ -1,26 +1,13 @@
-import { redirect } from "next/navigation"
-import { createClient } from "@/lib/supabase/server"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { ArrowLeft, Search } from "lucide-react"
 import Link from "next/link"
+import { createClient } from "@/lib/supabase/server"
 
 export default async function AllAssessmentsPage() {
   const supabase = await createClient()
-
-  const { data, error } = await supabase.auth.getUser()
-  if (error || !data?.user) {
-    redirect("/auth/login")
-  }
-
-  // Get user profile and check if tax agent
-  const { data: profile } = await supabase.from("profiles").select("*").eq("id", data.user.id).single()
-
-  if (profile?.role !== "tax_agent") {
-    redirect("/dashboard")
-  }
 
   // Get all assessments with client info
   const { data: assessments } = await supabase
@@ -114,7 +101,7 @@ export default async function AllAssessmentsPage() {
                       </div>
                       <div className="flex gap-2">
                         <Button asChild variant="outline" size="sm">
-                          <Link href={`/questionnaire/${assessment.id}`}>View Details</Link>
+                          <Link href={`/admin/submissions?assessmentId=${assessment.id}`}>View Details</Link>
                         </Button>
                         <Button asChild variant="outline" size="sm">
                           <Link href={`/admin/clients/${assessment.user_id}`}>Client Profile</Link>

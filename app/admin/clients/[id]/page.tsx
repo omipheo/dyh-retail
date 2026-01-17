@@ -1,44 +1,24 @@
-import { redirect, notFound } from 'next/navigation';
-import { createClient } from "@/lib/supabase/server";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Separator } from "@/components/ui/separator";
-import { ArrowLeft, FileText, Mail, Calendar } from 'lucide-react';
-import Link from "next/link";
+import { notFound } from "next/navigation"
+import { createClient } from "@/lib/supabase/server"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Separator } from "@/components/ui/separator"
+import { ArrowLeft, FileText, Mail, Calendar } from "lucide-react"
+import Link from "next/link"
 
 export default async function ClientProfilePage({
   params,
 }: {
-  params: Promise<{ id: string }>;
+  params: Promise<{ id: string }>
 }) {
-  const { id } = await params;
-  const supabase = await createClient();
-
-  const { data: user } = await supabase.auth.getUser();
-  if (!user?.user) {
-    redirect("/auth/login");
-  }
-
-  // Check if current user is tax agent
-  const { data: currentProfile } = await supabase
-    .from("profiles")
-    .select("role")
-    .eq("id", user.user.id)
-    .single();
-
-  if (currentProfile?.role !== "tax_agent") {
-    redirect("/dashboard");
-  }
+  const { id } = await params
+  const supabase = await createClient()
 
   // Get client profile
-  const { data: clientProfile, error } = await supabase
-    .from("profiles")
-    .select("*")
-    .eq("id", id)
-    .single();
+  const { data: clientProfile, error } = await supabase.from("profiles").select("*").eq("id", id).single()
 
   if (error || !clientProfile) {
-    notFound();
+    notFound()
   }
 
   // Get client's assessments
@@ -46,7 +26,16 @@ export default async function ClientProfilePage({
     .from("questionnaire_responses")
     .select("*")
     .eq("user_id", id)
-    .order("created_at", { ascending: false });
+    .order("created_at", { ascending: false })
+
+  const { data: clientFollowups } = await supabase
+    .from("client_followups")
+    .select(`
+      *,
+      documents:followup_documents(*)
+    `)
+    .eq("client_id", id)
+    .order("created_at", { ascending: false })
 
   return (
     <div className="min-h-screen bg-background">
@@ -102,9 +91,7 @@ export default async function ClientProfilePage({
               <div className="flex items-center justify-between">
                 <div>
                   <CardTitle>Assessments</CardTitle>
-                  <CardDescription>
-                    {assessments?.length || 0} total assessments
-                  </CardDescription>
+                  <CardDescription>{assessments?.length || 0} total assessments</CardDescription>
                 </div>
                 <Button asChild variant="outline">
                   <Link href={`/admin/clients/${id}/assessments`}>View All</Link>
@@ -124,19 +111,19 @@ export default async function ClientProfilePage({
                       </div>
                       <div className="flex items-center gap-4">
                         {assessment.total_deduction && (
-                          <p className="text-lg font-semibold text-primary">
-                            ${assessment.total_deduction.toFixed(2)}
-                          </p>
+                          <p className="text-lg font-semibold text-primary">${assessment.total_deduction.toFixed(2)}</p>
                         )}
-                        <span className={`text-xs px-2 py-1 rounded-full ${
-                          assessment.status === "completed"
-                            ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300"
-                            : "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300"
-                        }`}>
+                        <span
+                          className={`text-xs px-2 py-1 rounded-full ${
+                            assessment.status === "completed"
+                              ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300"
+                              : "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300"
+                          }`}
+                        >
                           {assessment.status}
                         </span>
                         <Button asChild variant="ghost" size="sm">
-                          <Link href={`/questionnaire/${assessment.id}`}>View</Link>
+                          <Link href={`/admin/submissions?clientId=${assessment.id}`}>View</Link>
                         </Button>
                       </div>
                     </div>
@@ -150,8 +137,57 @@ export default async function ClientProfilePage({
               )}
             </CardContent>
           </Card>
+
+          {/* Client Communications Section */}
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle>Communications</CardTitle>
+                  <CardDescription>All follow-ups and messages with this client</CardDescription>
+                </div>
+                <Button asChild variant="outline">
+                  <Link href={`/admin/follow-ups/new?clientId=${id}`}>New Follow-Up</Link>
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {clientFollowups && clientFollowups.length > 0 ? (
+                <div className="space-y-4">
+                  {clientFollowups.map((followup: any) => {
+                    const documents = followup.documents as any[]
+                    return (
+                      <div key={followup.id} className="flex items-center justify-between p-4 border rounded-lg">
+                        <div className="flex-1">
+                          <p className="font-medium">{followup.subject}</p>
+                          <div className="flex items-center gap-4 text-sm text-muted-foreground mt-1">
+                            <span>{new Date(followup.created_at).toLocaleDateString()}</span>
+                            <span className="capitalize">{followup.status}</span>
+                            {documents && documents.length > 0 && (
+                              <span className="flex items-center gap-1">
+                                <FileText className="h-3 w-3" />
+                                {documents.length} doc{documents.length !== 1 ? "s" : ""}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                        <Button asChild variant="ghost" size="sm">
+                          <Link href={`/admin/follow-ups/${followup.id}`}>View</Link>
+                        </Button>
+                      </div>
+                    )
+                  })}
+                </div>
+              ) : (
+                <div className="text-center py-8">
+                  <FileText className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+                  <p className="text-muted-foreground">No communications yet</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
         </div>
       </div>
     </div>
-  );
+  )
 }
