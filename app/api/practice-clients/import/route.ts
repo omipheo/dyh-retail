@@ -1,24 +1,15 @@
 import { createClient } from "@supabase/supabase-js"
 import { NextResponse } from "next/server"
 
-function getSupabaseAdmin() {
+function getSupabaseClient() {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-  const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+  const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 
-  if (!supabaseUrl) {
-    throw new Error("Missing NEXT_PUBLIC_SUPABASE_URL environment variable")
+  if (!supabaseUrl || !supabaseKey) {
+    throw new Error("Missing Supabase environment variables")
   }
 
-  if (!supabaseServiceKey) {
-    throw new Error("Missing SUPABASE_SERVICE_ROLE_KEY environment variable")
-  }
-
-  return createClient(supabaseUrl, supabaseServiceKey, {
-    auth: {
-      autoRefreshToken: false,
-      persistSession: false,
-    },
-  })
+  return createClient(supabaseUrl, supabaseKey)
 }
 
 function parseCSVLine(line: string): string[] {
@@ -51,7 +42,7 @@ function parseCSVLine(line: string): string[] {
 export async function POST(request: Request) {
   let supabase
   try {
-    supabase = getSupabaseAdmin()
+    supabase = getSupabaseClient()
   } catch (envError) {
     console.error("[v0] Environment variable error:", envError)
     return NextResponse.json(
