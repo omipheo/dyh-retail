@@ -361,23 +361,46 @@ export function CSVImportForm() {
         </Alert>
       )}
 
-      {importResult && importResult.success === 0 && importResult.updated === 0 && importResult.failed > 0 && (
-        <Alert variant="destructive">
+      {importResult &&
+        importResult.success === 0 &&
+        importResult.updated === 0 &&
+        importResult.skipped === 0 &&
+        importResult.failed > 0 && (
+          <Alert variant="destructive">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>
+              <div className="space-y-2">
+                <p className="font-semibold">All Imports Failed!</p>
+                <p className="text-sm">
+                  The import reported {importResult.failed} clients processed, but NONE were saved to the database.
+                </p>
+                <p className="text-sm font-medium">Common causes:</p>
+                <ul className="text-sm list-disc list-inside">
+                  <li>Database permission errors (RLS policies blocking inserts)</li>
+                  <li>Missing required fields in your CSV</li>
+                  <li>Database constraints violated (unique email, etc.)</li>
+                </ul>
+                <p className="text-sm mt-2">
+                  Check the error details below and your browser console (F12) for specific database error messages.
+                </p>
+              </div>
+            </AlertDescription>
+          </Alert>
+        )}
+
+      {importResult && importResult.success === 0 && importResult.updated === 0 && importResult.skipped > 0 && (
+        <Alert>
           <AlertCircle className="h-4 w-4" />
           <AlertDescription>
             <div className="space-y-2">
-              <p className="font-semibold">All Imports Failed!</p>
+              <p className="font-semibold">All Clients Already Exist</p>
               <p className="text-sm">
-                The import reported {importResult.failed} clients processed, but NONE were saved to the database.
+                All {importResult.skipped} clients from your CSV already exist in the database with the same status. No
+                changes were made.
               </p>
-              <p className="text-sm font-medium">Common causes:</p>
-              <ul className="text-sm list-disc list-inside">
-                <li>Database permission errors (RLS policies blocking inserts)</li>
-                <li>Missing required fields in your CSV</li>
-                <li>Database constraints violated (unique email, etc.)</li>
-              </ul>
               <p className="text-sm mt-2">
-                Check the error details below and your browser console (F12) for specific database error messages.
+                If you want to re-import these clients, delete all existing clients first using the "Delete All Clients"
+                button above.
               </p>
             </div>
           </AlertDescription>
