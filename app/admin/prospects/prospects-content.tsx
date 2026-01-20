@@ -1,224 +1,215 @@
 "use client"
 
-import { useState, useEffect } from "react"
-import { createClient } from "@/lib/supabase/client"
+import { useState } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
-import { Button } from "@/components/ui/button"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
-import { Search, Eye, Users, TrendingUp } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { Search, Eye, Calendar, Mail, User } from "lucide-react"
 import Link from "next/link"
 
-interface Prospect {
-  id: string
-  email: string
-  full_name: string
-  phone_number: string
-  status: string
-  created_at: string
-  last_activity_at: string
-  questionnaire_data: any
+interface ProspectsContentProps {
+  prospects: any[]
 }
 
-export default function ProspectsContent() {
-  const [prospects, setProspects] = useState<Prospect[]>([])
-  const [filteredProspects, setFilteredProspects] = useState<Prospect[]>([])
-  const [searchTerm, setSearchTerm] = useState("")
-  const [statusFilter, setStatusFilter] = useState<string>("all")
-  const [loading, setLoading] = useState(true)
+export function ProspectsContent({ prospects }: ProspectsContentProps) {
+  const [searchQuery, setSearchQuery] = useState("")
+  const [statusFilter, setStatusFilter] = useState("all")
+  const [sortBy, setSortBy] = useState("newest")
 
-  const supabase = createClient()
+  // Calculate statistics
+  const totalProspects = prospects.length
+  const pendingCount = prospects.filter((p) => p.status === "pending").length
+  const qualifiedCount = prospects.filter((p) => p.status === "qualified").length
+  const convertedCount = prospects.filter((p) => p.status === "converted").length
 
-  useEffect(() => {
-    fetchProspects()
-  }, [])
+  // Filter and sort prospects
+  let filteredProspects = prospects.filter((prospect) => {
+    const matchesSearch =
+      searchQuery === "" ||
+      prospect.client_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      prospect.client_email?.toLowerCase().includes(searchQuery.toLowerCase())
 
-  useEffect(() => {
-    filterProspects()
-  }, [searchTerm, statusFilter, prospects])
+    const matchesStatus = statusFilter === "all" || prospect.status === statusFilter
 
-  async function fetchProspects() {
-    setLoading(true)
-    const { data, error } = await supabase
-      .from("dyh_explorer_prospects")
-      .select("*")
-      .order("created_at", { ascending: false })
+    return matchesSearch && matchesStatus
+  })
 
-    if (error) {
-      console.error("Error fetching prospects:", error)
-    } else {
-      setProspects(data || [])
+  // Sort prospects
+  filteredProspects = [...filteredProspects].sort((a, b) => {
+    if (sortBy === "newest") {
+      return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+    } else if (sortBy === "oldest") {
+      return new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+    } else if (sortBy === "name") {
+      const aName = a.client_name || ""
+      const bName = b.client_name || ""
+      return aName.localeCompare(bName)
     }
-    setLoading(false)
-  }
-
-  function filterProspects() {
-    let filtered = prospects
-
-    // Filter by status
-    if (statusFilter !== "all") {
-      filtered = filtered.filter((p) => p.status === statusFilter)
-    }
-
-    // Filter by search term
-    if (searchTerm) {
-      filtered = filtered.filter(
-        (p) =>
-          p.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          p.email?.toLowerCase().includes(searchTerm.toLowerCase()),
-      )
-    }
-
-    setFilteredProspects(filtered)
-  }
-
-  const stats = {
-    total: prospects.length,
-    active: prospects.filter((p) => p.status === "prospect").length,
-    interested: prospects.filter((p) => p.status === "interested").length,
-    converted: prospects.filter((p) => p.status === "converted").length,
-  }
+    return 0
+  })
 
   return (
     <div className="container mx-auto px-4 py-8">
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-3xl font-bold">DYH Explorer Prospects</h1>
-          <p className="text-muted-foreground">Manage and track potential clients</p>
+      <div className="max-w-7xl mx-auto space-y-6">
+        {/* Statistics Cards */}
+        <div className="grid gap-4 md:grid-cols-4">
+          <Card>
+            <CardHeader className="pb-3">
+              <CardDescription>Total Prospects</CardDescription>
+              <CardTitle className="text-3xl">{totalProspects}</CardTitle>
+            </CardHeader>
+          </Card>
+          <Card>
+            <CardHeader className="pb-3">
+              <CardDescription>Pending</CardDescription>
+              <CardTitle className="text-3xl text-yellow-600">{pendingCount}</CardTitle>
+            </CardHeader>
+          </Card>
+          <Card>
+            <CardHeader className="pb-3">
+              <CardDescription>Qualified</CardDescription>
+              <CardTitle className="text-3xl text-blue-600">{qualifiedCount}</CardTitle>
+            </CardHeader>
+          </Card>
+          <Card>
+            <CardHeader className="pb-3">
+              <CardDescription>Converted</CardDescription>
+              <CardTitle className="text-3xl text-green-600">{convertedCount}</CardTitle>
+            </CardHeader>
+          </Card>
         </div>
-      </div>
 
-      {/* Stats Cards */}
-      <div className="grid gap-4 md:grid-cols-4 mb-6">
+        {/* Search and Filters */}
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Prospects</CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.total}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Active</CardTitle>
-            <TrendingUp className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.active}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Interested</CardTitle>
-            <TrendingUp className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.interested}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Converted</CardTitle>
-            <TrendingUp className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.converted}</div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Filters */}
-      <Card className="mb-6">
-        <CardContent className="pt-6">
-          <div className="flex gap-4">
-            <div className="flex-1 relative">
-              <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Search by name or email..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-9"
-              />
+          <CardContent className="pt-6">
+            <div className="flex gap-4">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search by name or email..."
+                  className="pl-10"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                />
+              </div>
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger className="w-[180px]">
+                  <SelectValue placeholder="Filter by status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Statuses</SelectItem>
+                  <SelectItem value="pending">Pending</SelectItem>
+                  <SelectItem value="contacted">Contacted</SelectItem>
+                  <SelectItem value="qualified">Qualified</SelectItem>
+                  <SelectItem value="converted">Converted</SelectItem>
+                </SelectContent>
+              </Select>
+              <Select value={sortBy} onValueChange={setSortBy}>
+                <SelectTrigger className="w-[180px]">
+                  <SelectValue placeholder="Sort by" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="newest">Newest First</SelectItem>
+                  <SelectItem value="oldest">Oldest First</SelectItem>
+                  <SelectItem value="name">Name</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
-            <div className="flex gap-2">
-              <Button variant={statusFilter === "all" ? "default" : "outline"} onClick={() => setStatusFilter("all")}>
-                All
-              </Button>
-              <Button
-                variant={statusFilter === "prospect" ? "default" : "outline"}
-                onClick={() => setStatusFilter("prospect")}
-              >
-                Prospects
-              </Button>
-              <Button
-                variant={statusFilter === "interested" ? "default" : "outline"}
-                onClick={() => setStatusFilter("interested")}
-              >
-                Interested
-              </Button>
-              <Button
-                variant={statusFilter === "converted" ? "default" : "outline"}
-                onClick={() => setStatusFilter("converted")}
-              >
-                Converted
-              </Button>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
 
-      {/* Prospects List */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Prospects ({filteredProspects.length})</CardTitle>
-          <CardDescription>View and manage all prospects from DYH Explorer</CardDescription>
-        </CardHeader>
-        <CardContent>
-          {loading ? (
-            <div className="text-center py-8">Loading prospects...</div>
-          ) : filteredProspects.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">No prospects found</div>
-          ) : (
-            <div className="space-y-4">
-              {filteredProspects.map((prospect) => (
-                <div
-                  key={prospect.id}
-                  className="flex items-center justify-between p-4 border rounded-lg hover:bg-accent/50 transition-colors"
-                >
-                  <div className="flex-1">
-                    <div className="flex items-center gap-3 mb-1">
-                      <h3 className="font-semibold">{prospect.full_name || "No Name"}</h3>
-                      <Badge
-                        variant={
-                          prospect.status === "converted"
-                            ? "default"
-                            : prospect.status === "interested"
-                              ? "secondary"
-                              : "outline"
-                        }
-                      >
-                        {prospect.status}
-                      </Badge>
+        {/* Prospects List */}
+        {filteredProspects.length > 0 ? (
+          <div className="space-y-4">
+            {filteredProspects.map((prospect) => {
+              const data = prospect.questionnaire_data as any
+
+              return (
+                <Card key={prospect.id} className="hover:shadow-md transition-shadow">
+                  <CardHeader>
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-3 mb-2">
+                          <CardTitle className="text-xl">{prospect.client_name || "Unknown Prospect"}</CardTitle>
+                          <Badge
+                            variant={
+                              prospect.status === "converted"
+                                ? "default"
+                                : prospect.status === "qualified"
+                                  ? "secondary"
+                                  : "outline"
+                            }
+                          >
+                            {prospect.status}
+                          </Badge>
+                        </div>
+                        <CardDescription className="flex items-center gap-4">
+                          <span className="flex items-center gap-1">
+                            <Mail className="h-3 w-3" />
+                            {prospect.client_email}
+                          </span>
+                          <span className="flex items-center gap-1">
+                            <Calendar className="h-3 w-3" />
+                            {new Date(prospect.created_at).toLocaleDateString()}
+                          </span>
+                        </CardDescription>
+                      </div>
+                      <div className="text-right text-sm text-muted-foreground">
+                        <p>Updated: {new Date(prospect.updated_at).toLocaleDateString()}</p>
+                        {prospect.converted_at && (
+                          <p>Converted: {new Date(prospect.converted_at).toLocaleDateString()}</p>
+                        )}
+                      </div>
                     </div>
-                    <p className="text-sm text-muted-foreground">{prospect.email}</p>
-                    <p className="text-sm text-muted-foreground">{prospect.phone_number || "No phone"}</p>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      Created: {new Date(prospect.created_at).toLocaleDateString()}
-                    </p>
-                  </div>
-                  <Link href={`/admin/prospects/${prospect.id}`}>
-                    <Button variant="outline" size="sm">
-                      <Eye className="h-4 w-4 mr-2" />
-                      View Details
-                    </Button>
-                  </Link>
-                </div>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="flex justify-between items-center">
+                      <div className="space-y-1 text-sm">
+                        <div className="grid grid-cols-2 gap-x-8 gap-y-1">
+                          {prospect.phone && (
+                            <div>
+                              <span className="text-muted-foreground">Phone:</span>
+                              <span className="ml-2">{prospect.phone}</span>
+                            </div>
+                          )}
+                          <div>
+                            <span className="text-muted-foreground">Source:</span>
+                            <span className="ml-2 capitalize">{prospect.source}</span>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex gap-2">
+                        <Button asChild variant="outline" size="sm">
+                          <Link href={`/admin/prospects/${prospect.id}`}>
+                            <Eye className="h-4 w-4 mr-2" />
+                            View Details
+                          </Link>
+                        </Button>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              )
+            })}
+          </div>
+        ) : (
+          <Card>
+            <CardContent className="py-16 text-center">
+              <User className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+              <p className="text-muted-foreground text-lg">
+                {searchQuery || statusFilter !== "all" ? "No matching prospects found" : "No prospects found"}
+              </p>
+              <p className="text-sm text-muted-foreground mt-2">
+                {searchQuery || statusFilter !== "all"
+                  ? "Try adjusting your search or filters"
+                  : "Prospects from DYH Explorer will appear here"}
+              </p>
+            </CardContent>
+          </Card>
+        )}
+      </div>
     </div>
   )
 }

@@ -10,6 +10,7 @@ export interface Product {
   upfrontPriceInCents?: number
 }
 
+// Product catalog for Deduct Your Home services
 export const PRODUCTS: Product[] = [
   {
     id: "phase-1",

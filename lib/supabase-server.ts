@@ -1,12 +1,35 @@
 import { createServerClient as createClient } from "@supabase/ssr"
 import { cookies } from "next/headers"
 
-export { createServerClient } from "@supabase/ssr"
-
 export async function createServerClient() {
   const cookieStore = await cookies()
 
-  return createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!, {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+
+  if (!supabaseUrl || !supabaseAnonKey) {
+    // Return a mock client that returns empty data instead of crashing
+    return {
+      from: () => ({
+        select: () => ({
+          order: () => ({
+            eq: () => Promise.resolve({ data: null, error: { message: "Supabase not connected. Please add the Supabase integration." } }),
+          }),
+          eq: () => Promise.resolve({ data: null, error: { message: "Supabase not connected. Please add the Supabase integration." } }),
+        }),
+        insert: () => Promise.resolve({ data: null, error: { message: "Supabase not connected" } }),
+        update: () => ({ eq: () => Promise.resolve({ data: null, error: { message: "Supabase not connected" } }) }),
+        delete: () => ({ eq: () => Promise.resolve({ data: null, error: { message: "Supabase not connected" } }) }),
+        upsert: () => Promise.resolve({ data: null, error: { message: "Supabase not connected" } }),
+      }),
+      auth: {
+        getUser: () => Promise.resolve({ data: { user: null }, error: null }),
+      },
+      _isDisconnected: true,
+    } as any
+  }
+
+  return createClient(supabaseUrl, supabaseAnonKey, {
     cookies: {
       get(name: string) {
         return cookieStore.get(name)?.value

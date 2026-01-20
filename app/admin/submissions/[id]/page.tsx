@@ -1,36 +1,21 @@
-import { redirect } from "next/navigation"
+import { notFound } from "next/navigation"
 import { createClient } from "@/lib/supabase/server"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
-import { ArrowLeft, Download, User, Mail, Calendar, FileText } from "lucide-react"
+import { ArrowLeft, Download, FileText, User, Calendar } from "lucide-react"
 import Link from "next/link"
 
-interface PageProps {
-  params: Promise<{
-    id: string
-  }>
-}
-
-export default async function SubmissionDetailPage({ params }: PageProps) {
-  const resolvedParams = await params
+export default async function SubmissionDetailPage({
+  params,
+}: {
+  params: { id: string }
+}) {
   const supabase = await createClient()
 
-  const { data, error } = await supabase.auth.getUser()
-  if (error || !data?.user) {
-    redirect("/auth/login")
-  }
-
-  // Get user profile and check if tax agent
-  const { data: profile } = await supabase.from("profiles").select("*").eq("id", data.user.id).single()
-
-  if (profile?.role !== "tax_agent") {
-    redirect("/dashboard")
-  }
-
-  // Get the specific assessment with profile
-  const { data: assessment } = await supabase
+  // Get the specific assessment
+  const { data: assessment, error: assessmentError } = await supabase
     .from("client_assessments")
     .select(
       `
@@ -38,18 +23,47 @@ export default async function SubmissionDetailPage({ params }: PageProps) {
       profiles!client_assessments_client_id_fkey(id, full_name, email)
     `,
     )
-    .eq("id", resolvedParams.id)
+    .eq("id", params.id)
     .single()
 
-  if (!assessment) {
-    redirect("/admin/submissions")
+  if (assessmentError || !assessment) {
+    notFound()
   }
 
   const clientProfile = assessment.profiles as any
-  const data_ = assessment.questionnaire_data as any
+  const formData = assessment.questionnaire_data as any
 
-  // Check if this has Strategy Selector data
-  const hasStrategySelector = data_.ss_q1_plant_equipment !== undefined
+  // Quick Questionnaire Sections
+  const quickQuestions = [
+    { q: "1", label: "Marital Status", value: formData.q1_marital_status },
+    { q: "2", label: "Annual Income", value: formData.q2_annual_income, prefix: "$" },
+    { q: "3", label: "Partner Income", value: formData.q3_partner_income, prefix: "$" },
+    { q: "4", label: "Number of Children", value: formData.q4_num_children },
+    { q: "5", label: "Ages of Children", value: formData.q5_ages_children },
+    { q: "6", label: "Children Incomes", value: formData.q6_children_incomes, prefix: "$" },
+    { q: "7", label: "Employment Status", value: formData.q7_employment_status },
+    { q: "8", label: "Partner Employment", value: formData.q8_partner_employment },
+    { q: "9", label: "Renting", value: formData.q9_renting },
+    { q: "10", label: "Home Status", value: formData.q10_home_status },
+    { q: "11", label: "Home Value", value: formData.q11_home_value, prefix: "$" },
+    { q: "12", label: "Personal Debts", value: formData.q12_personal_debts, prefix: "$" },
+    { q: "13", label: "Partner Debts", value: formData.q13_partner_debts, prefix: "$" },
+    { q: "16", label: "Total Floor Space", value: formData.q16_total_floor_space, suffix: " sqm" },
+    { q: "17", label: "Business Floor Space", value: formData.q17_business_floor_space, suffix: " sqm" },
+    { q: "20", label: "Years Operating", value: formData.q20_years_operated },
+    { q: "28", label: "GST Registered", value: formData.q28_gst_registered },
+  ]
+
+  // Strategy Selector Assets
+  const strategyAssets = [
+    { label: "Plant & Equipment", value: formData.ss_q1_plant_equipment, prefix: "$" },
+    { label: "Goodwill", value: formData.ss_q1_goodwill, prefix: "$" },
+    { label: "IP/Patents", value: formData.ss_q1_ip_patents, prefix: "$" },
+    { label: "Real Property", value: formData.ss_q1_real_property, prefix: "$" },
+    { label: "Liabilities", value: formData.ss_q2_liabilities, prefix: "$" },
+  ]
+
+  const hasStrategySelector = formData.ss_q1_plant_equipment !== undefined
 
   return (
     <div className="min-h-screen bg-background">
@@ -64,14 +78,12 @@ export default async function SubmissionDetailPage({ params }: PageProps) {
           <div className="flex items-start justify-between">
             <div>
               <h1 className="text-3xl font-bold">Submission Details</h1>
-              <p className="text-sm text-muted-foreground mt-1">
-                Complete questionnaire and strategy selector responses
-              </p>
+              <p className="text-sm text-muted-foreground mt-1">Complete questionnaire responses</p>
             </div>
             <Button asChild>
-              <Link href={`/api/admin/submissions/${assessment.id}/export`}>
+              <Link href={`/admin/submissions/${params.id}/export`}>
                 <Download className="h-4 w-4 mr-2" />
-                Export
+                Export PDF
               </Link>
             </Button>
           </div>
@@ -80,417 +92,162 @@ export default async function SubmissionDetailPage({ params }: PageProps) {
 
       <div className="container mx-auto px-4 py-8">
         <div className="max-w-5xl mx-auto space-y-6">
-          {/* Client Information Card */}
+          {/* Client Information */}
           <Card>
             <CardHeader>
-              <div className="flex items-center justify-between">
-                <CardTitle>Client Information</CardTitle>
-                <Badge
-                  variant={
-                    assessment.status === "submitted"
-                      ? "default"
-                      : assessment.status === "draft"
-                        ? "secondary"
-                        : "outline"
-                  }
-                >
-                  {assessment.status}
-                </Badge>
+              <div className="flex items-start justify-between">
+                <div>
+                  <CardTitle className="flex items-center gap-3">
+                    <User className="h-5 w-5" />
+                    {clientProfile?.full_name || assessment.client_name || "Unknown Client"}
+                  </CardTitle>
+                  <CardDescription className="mt-2 space-y-1">
+                    <div>{clientProfile?.email || "No email"}</div>
+                    <div className="flex items-center gap-1">
+                      <Calendar className="h-3 w-3" />
+                      Submitted: {new Date(assessment.created_at).toLocaleString()}
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <Calendar className="h-3 w-3" />
+                      Last Updated: {new Date(assessment.updated_at).toLocaleString()}
+                    </div>
+                  </CardDescription>
+                </div>
+                <div className="flex flex-col gap-2 items-end">
+                  <Badge
+                    variant={
+                      assessment.status === "submitted"
+                        ? "default"
+                        : assessment.status === "draft"
+                          ? "secondary"
+                          : "outline"
+                    }
+                  >
+                    {assessment.status}
+                  </Badge>
+                  {hasStrategySelector && (
+                    <Badge variant="outline" className="bg-blue-50">
+                      <FileText className="h-3 w-3 mr-1" />
+                      Strategy Selector Completed
+                    </Badge>
+                  )}
+                </div>
               </div>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid gap-4 md:grid-cols-2">
-                <div className="flex items-center gap-3">
-                  <User className="h-5 w-5 text-muted-foreground" />
-                  <div>
-                    <p className="text-sm text-muted-foreground">Client Name</p>
-                    <p className="font-medium">{clientProfile?.full_name || assessment.client_name || "Unknown"}</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-3">
-                  <Mail className="h-5 w-5 text-muted-foreground" />
-                  <div>
-                    <p className="text-sm text-muted-foreground">Email</p>
-                    <p className="font-medium">{clientProfile?.email || "No email"}</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-3">
-                  <Calendar className="h-5 w-5 text-muted-foreground" />
-                  <div>
-                    <p className="text-sm text-muted-foreground">Submitted</p>
-                    <p className="font-medium">{new Date(assessment.created_at).toLocaleString()}</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-3">
-                  <Calendar className="h-5 w-5 text-muted-foreground" />
-                  <div>
-                    <p className="text-sm text-muted-foreground">Last Updated</p>
-                    <p className="font-medium">{new Date(assessment.updated_at).toLocaleString()}</p>
-                  </div>
-                </div>
-              </div>
-            </CardContent>
           </Card>
 
           {/* Quick Questionnaire Responses */}
           <Card>
             <CardHeader>
-              <CardTitle>Quick Questionnaire Responses</CardTitle>
-              <CardDescription>Client's answers to initial assessment questions</CardDescription>
+              <CardTitle>Quick Questionnaire (29 Questions)</CardTitle>
+              <CardDescription>Initial confidential questionnaire responses</CardDescription>
             </CardHeader>
-            <CardContent className="space-y-6">
-              {/* Personal Information */}
-              <div>
-                <h3 className="font-semibold mb-3 text-lg">Personal Information</h3>
-                <div className="grid gap-4 md:grid-cols-2">
-                  <div>
-                    <p className="text-sm text-muted-foreground">Marital Status</p>
-                    <p className="font-medium capitalize">{data_.q1_marital_status || "Not provided"}</p>
+            <CardContent>
+              <div className="grid gap-4 md:grid-cols-2">
+                {quickQuestions.map((item) => (
+                  <div key={item.q} className="flex flex-col gap-1">
+                    <div className="text-sm font-medium text-muted-foreground">
+                      Q{item.q}: {item.label}
+                    </div>
+                    <div className="text-base font-medium capitalize">
+                      {item.prefix}
+                      {item.value || "Not provided"}
+                      {item.suffix}
+                    </div>
                   </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">Annual Income</p>
-                    <p className="font-medium">
-                      {data_.q2_annual_income ? `$${Number(data_.q2_annual_income).toLocaleString()}` : "Not provided"}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">Spouse/Partner Income</p>
-                    <p className="font-medium">
-                      {data_.q3_spouse_income ? `$${Number(data_.q3_spouse_income).toLocaleString()}` : "Not provided"}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">Number of Children</p>
-                    <p className="font-medium">{data_.q4_number_children ?? "Not provided"}</p>
-                  </div>
-                </div>
+                ))}
               </div>
 
-              <Separator />
-
-              {/* Business Details */}
-              <div>
-                <h3 className="font-semibold mb-3 text-lg">Business Details</h3>
-                <div className="grid gap-4 md:grid-cols-2">
-                  <div>
-                    <p className="text-sm text-muted-foreground">Business Structure</p>
-                    <p className="font-medium capitalize">{data_.q5_business_structure || "Not provided"}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">Income Type</p>
-                    <p className="font-medium capitalize">{data_.q6_income_type || "Not provided"}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">Annual Turnover</p>
-                    <p className="font-medium">
-                      {data_.q7_annual_turnover
-                        ? `$${Number(data_.q7_annual_turnover).toLocaleString()}`
-                        : "Not provided"}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">Business Expenses</p>
-                    <p className="font-medium">
-                      {data_.q8_business_expenses
-                        ? `$${Number(data_.q8_business_expenses).toLocaleString()}`
-                        : "Not provided"}
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              <Separator />
-
-              {/* Deductions */}
-              <div>
-                <h3 className="font-semibold mb-3 text-lg">Deductions</h3>
-                <div className="grid gap-4 md:grid-cols-2">
-                  <div>
-                    <p className="text-sm text-muted-foreground">Claiming Home Office Deduction</p>
-                    <p className="font-medium">{data_.q9_home_office === "yes" ? "Yes" : "No"}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">Claiming Vehicle Deduction</p>
-                    <p className="font-medium">{data_.q10_vehicle === "yes" ? "Yes" : "No"}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">Claiming Business Travel</p>
-                    <p className="font-medium">{data_.q11_business_travel === "yes" ? "Yes" : "No"}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">Professional Development Expenses</p>
-                    <p className="font-medium">
-                      {data_.q12_professional_dev
-                        ? `$${Number(data_.q12_professional_dev).toLocaleString()}`
-                        : "Not provided"}
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              <Separator />
-
-              {/* Assets & Investments */}
-              <div>
-                <h3 className="font-semibold mb-3 text-lg">Assets & Investments</h3>
-                <div className="grid gap-4 md:grid-cols-2">
-                  <div>
-                    <p className="text-sm text-muted-foreground">Investment Properties</p>
-                    <p className="font-medium">{data_.q13_investment_properties ?? "Not provided"}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">Rental Income</p>
-                    <p className="font-medium">
-                      {data_.q14_rental_income
-                        ? `$${Number(data_.q14_rental_income).toLocaleString()}`
-                        : "Not provided"}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">Shares/Managed Funds</p>
-                    <p className="font-medium">{data_.q15_shares === "yes" ? "Yes" : "No"}</p>
-                  </div>
-                </div>
-              </div>
-
-              <Separator />
-
-              {/* Home Office Details */}
-              <div>
-                <h3 className="font-semibold mb-3 text-lg">Home Office Details</h3>
-                <div className="grid gap-4 md:grid-cols-2">
-                  <div>
-                    <p className="text-sm text-muted-foreground">Total Floor Space</p>
-                    <p className="font-medium">{data_.q16_total_floor_space || "Not provided"} sqm</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">Business Floor Space</p>
-                    <p className="font-medium">{data_.q17_business_floor_space || "Not provided"} sqm</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">Business Use Percentage</p>
-                    <p className="font-medium">{data_.q18_business_use_percentage || "Not provided"}%</p>
-                  </div>
-                </div>
-              </div>
-
-              <Separator />
-
-              {/* Additional Information */}
-              <div>
-                <h3 className="font-semibold mb-3 text-lg">Additional Information</h3>
-                <div className="grid gap-4 md:grid-cols-2">
-                  <div>
-                    <p className="text-sm text-muted-foreground">Foreign Income</p>
-                    <p className="font-medium">{data_.q19_foreign_income === "yes" ? "Yes" : "No"}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">CGT Events</p>
-                    <p className="font-medium">{data_.q20_cgt_event === "yes" ? "Yes" : "No"}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">Private Health Insurance</p>
-                    <p className="font-medium">{data_.q21_health_insurance === "yes" ? "Yes" : "No"}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">Superannuation Contributions</p>
-                    <p className="font-medium">
-                      {data_.q22_super_contributions
-                        ? `$${Number(data_.q22_super_contributions).toLocaleString()}`
-                        : "Not provided"}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">Charitable Donations</p>
-                    <p className="font-medium">
-                      {data_.q23_charity_donations
-                        ? `$${Number(data_.q23_charity_donations).toLocaleString()}`
-                        : "Not provided"}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">Tax Agent Used Previously</p>
-                    <p className="font-medium">{data_.q24_tax_agent === "yes" ? "Yes" : "No"}</p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Comments */}
-              {data_.q29_additional_comments && (
+              {/* Additional Comments */}
+              {(formData.comment1 || formData.comment2 || formData.comment3) && (
                 <>
-                  <Separator />
-                  <div>
-                    <h3 className="font-semibold mb-3 text-lg">Additional Comments</h3>
-                    <p className="text-sm whitespace-pre-wrap bg-muted p-4 rounded-lg">
-                      {data_.q29_additional_comments}
-                    </p>
+                  <Separator className="my-6" />
+                  <div className="space-y-4">
+                    <h3 className="text-lg font-semibold">Additional Comments</h3>
+                    {formData.comment1 && (
+                      <div className="space-y-1">
+                        <div className="text-sm font-medium text-muted-foreground">Comment 1</div>
+                        <div className="text-sm bg-muted p-3 rounded-md">{formData.comment1}</div>
+                      </div>
+                    )}
+                    {formData.comment2 && (
+                      <div className="space-y-1">
+                        <div className="text-sm font-medium text-muted-foreground">Comment 2</div>
+                        <div className="text-sm bg-muted p-3 rounded-md">{formData.comment2}</div>
+                      </div>
+                    )}
+                    {formData.comment3 && (
+                      <div className="space-y-1">
+                        <div className="text-sm font-medium text-muted-foreground">Comment 3</div>
+                        <div className="text-sm bg-muted p-3 rounded-md">{formData.comment3}</div>
+                      </div>
+                    )}
                   </div>
                 </>
               )}
             </CardContent>
           </Card>
 
-          {/* Strategy Selector Section */}
+          {/* Strategy Selector Responses */}
           {hasStrategySelector && (
-            <Card>
-              <CardHeader>
-                <div className="flex items-center gap-2">
-                  <FileText className="h-5 w-5" />
-                  <CardTitle>Strategy Selector Responses</CardTitle>
-                </div>
-                <CardDescription>Detailed business profile and asset information</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                {/* Assets Summary */}
-                <div>
-                  <h3 className="font-semibold mb-3 text-lg">Assets & Liabilities</h3>
-                  <div className="grid gap-4 md:grid-cols-3">
-                    <div className="p-4 bg-green-50 rounded-lg">
-                      <p className="text-sm text-muted-foreground">Total Assets</p>
-                      <p className="text-2xl font-bold text-green-700">
-                        ${Number(data_.ss_total_assets || 0).toLocaleString()}
-                      </p>
-                    </div>
-                    <div className="p-4 bg-red-50 rounded-lg">
-                      <p className="text-sm text-muted-foreground">Total Liabilities</p>
-                      <p className="text-2xl font-bold text-red-700">
-                        ${Number(data_.ss_total_liabilities || 0).toLocaleString()}
-                      </p>
-                    </div>
-                    <div className="p-4 bg-blue-50 rounded-lg">
-                      <p className="text-sm text-muted-foreground">Net Worth</p>
-                      <p className="text-2xl font-bold text-blue-700">
-                        $
-                        {(
-                          Number(data_.ss_total_assets || 0) - Number(data_.ss_total_liabilities || 0)
-                        ).toLocaleString()}
-                      </p>
-                    </div>
+            <>
+              <Card>
+                <CardHeader>
+                  <CardTitle>Strategy Selector - Assets & Liabilities</CardTitle>
+                  <CardDescription>Business assets and financial position</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid gap-4 md:grid-cols-2">
+                    {strategyAssets.map((item, idx) => (
+                      <div key={idx} className="flex flex-col gap-1">
+                        <div className="text-sm font-medium text-muted-foreground">{item.label}</div>
+                        <div className="text-base font-medium">
+                          {item.value ? `${item.prefix}${Number(item.value).toLocaleString()}` : "Not provided"}
+                        </div>
+                      </div>
+                    ))}
                   </div>
-                </div>
+                </CardContent>
+              </Card>
 
-                <Separator />
-
-                {/* Business Profile - First 20 questions */}
-                <div>
-                  <h3 className="font-semibold mb-3 text-lg">Business Profile (Questions 1-20)</h3>
+              <Card>
+                <CardHeader>
+                  <CardTitle>Strategy Selector - Business Profile (65 Questions)</CardTitle>
+                  <CardDescription>Comprehensive business, wealth & lifestyle profiler</CardDescription>
+                </CardHeader>
+                <CardContent>
                   <div className="space-y-3">
-                    {Object.entries(data_)
-                      .filter(
-                        ([key]) => key.startsWith("ss_q") && Number.parseInt(key.split("_")[1].substring(1)) <= 20,
-                      )
-                      .sort((a, b) => {
-                        const numA = Number.parseInt(a[0].split("_")[1].substring(1))
-                        const numB = Number.parseInt(b[0].split("_")[1].substring(1))
-                        return numA - numB
-                      })
-                      .map(([key, value]) => {
-                        const questionNum = key.split("_")[1]
-                        const questionText = key
-                          .split("_")
-                          .slice(2)
-                          .join(" ")
-                          .replace(/([A-Z])/g, " $1")
-                          .trim()
+                    {Object.keys(formData)
+                      .filter((key) => key.startsWith("ss_q") && key >= "ss_q3")
+                      .map((key) => {
+                        const qNum = key.replace("ss_q", "")
+                        const value = formData[key]
+
+                        if (!value || value === "") return null
+
                         return (
-                          <div key={key} className="grid grid-cols-[1fr,auto] gap-4 py-2 border-b last:border-0">
-                            <p className="text-sm capitalize">{questionText}</p>
-                            <p className="font-medium text-right">
-                              {typeof value === "boolean" ? (value ? "Yes" : "No") : String(value)}
-                            </p>
+                          <div key={key} className="flex items-start gap-3 text-sm">
+                            <div className="font-medium text-muted-foreground min-w-[60px]">Q{qNum}:</div>
+                            <div className="flex-1 capitalize">{value}</div>
                           </div>
                         )
                       })}
                   </div>
-                </div>
-
-                <Separator />
-
-                {/* Business Profile - Questions 21-40 */}
-                <div>
-                  <h3 className="font-semibold mb-3 text-lg">Business Profile (Questions 21-40)</h3>
-                  <div className="space-y-3">
-                    {Object.entries(data_)
-                      .filter(
-                        ([key]) =>
-                          key.startsWith("ss_q") &&
-                          Number.parseInt(key.split("_")[1].substring(1)) > 20 &&
-                          Number.parseInt(key.split("_")[1].substring(1)) <= 40,
-                      )
-                      .sort((a, b) => {
-                        const numA = Number.parseInt(a[0].split("_")[1].substring(1))
-                        const numB = Number.parseInt(b[0].split("_")[1].substring(1))
-                        return numA - numB
-                      })
-                      .map(([key, value]) => {
-                        const questionNum = key.split("_")[1]
-                        const questionText = key
-                          .split("_")
-                          .slice(2)
-                          .join(" ")
-                          .replace(/([A-Z])/g, " $1")
-                          .trim()
-                        return (
-                          <div key={key} className="grid grid-cols-[1fr,auto] gap-4 py-2 border-b last:border-0">
-                            <p className="text-sm capitalize">{questionText}</p>
-                            <p className="font-medium text-right">
-                              {typeof value === "boolean" ? (value ? "Yes" : "No") : String(value)}
-                            </p>
-                          </div>
-                        )
-                      })}
-                  </div>
-                </div>
-
-                <Separator />
-
-                {/* Business Profile - Questions 41-65 */}
-                <div>
-                  <h3 className="font-semibold mb-3 text-lg">Business Profile (Questions 41-65)</h3>
-                  <div className="space-y-3">
-                    {Object.entries(data_)
-                      .filter(
-                        ([key]) =>
-                          key.startsWith("ss_q") &&
-                          Number.parseInt(key.split("_")[1].substring(1)) > 40 &&
-                          Number.parseInt(key.split("_")[1].substring(1)) <= 65,
-                      )
-                      .sort((a, b) => {
-                        const numA = Number.parseInt(a[0].split("_")[1].substring(1))
-                        const numB = Number.parseInt(b[0].split("_")[1].substring(1))
-                        return numA - numB
-                      })
-                      .map(([key, value]) => {
-                        const questionNum = key.split("_")[1]
-                        const questionText = key
-                          .split("_")
-                          .slice(2)
-                          .join(" ")
-                          .replace(/([A-Z])/g, " $1")
-                          .trim()
-                        return (
-                          <div key={key} className="grid grid-cols-[1fr,auto] gap-4 py-2 border-b last:border-0">
-                            <p className="text-sm capitalize">{questionText}</p>
-                            <p className="font-medium text-right">
-                              {typeof value === "boolean" ? (value ? "Yes" : "No") : String(value)}
-                            </p>
-                          </div>
-                        )
-                      })}
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+                </CardContent>
+              </Card>
+            </>
           )}
 
-          {/* Raw Data Card */}
+          {/* Raw JSON Data (for debugging/export) */}
           <Card>
             <CardHeader>
-              <CardTitle>Raw Data (JSON)</CardTitle>
-              <CardDescription>Complete questionnaire data in JSON format</CardDescription>
+              <CardTitle>Complete Data (JSON)</CardTitle>
+              <CardDescription>Full questionnaire data structure</CardDescription>
             </CardHeader>
             <CardContent>
-              <pre className="bg-muted p-4 rounded-lg overflow-x-auto text-xs">{JSON.stringify(data_, null, 2)}</pre>
+              <pre className="text-xs bg-muted p-4 rounded-md overflow-auto max-h-96">
+                {JSON.stringify(formData, null, 2)}
+              </pre>
             </CardContent>
           </Card>
         </div>
