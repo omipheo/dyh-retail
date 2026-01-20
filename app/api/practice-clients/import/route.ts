@@ -1,5 +1,11 @@
-import { createServerClient } from "@/lib/supabase-server"
+import { createClient } from "@supabase/supabase-js"
 import { NextResponse } from "next/server"
+
+function getSupabaseClient() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL!
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  return createClient(url, key)
+}
 
 function parseCSVLine(line: string): string[] {
   const result: string[] = []
@@ -29,21 +35,7 @@ function parseCSVLine(line: string): string[] {
 }
 
 export async function POST(request: Request) {
-  let supabase;
-  try {
-    supabase = await createServerClient()
-  } catch (clientError) {
-    console.error("[v0] Failed to create Supabase client:", clientError)
-    return NextResponse.json({
-      error: "Database connection failed",
-      success: 0,
-      failed: 0,
-      updated: 0,
-      skipped: 0,
-      skippedRows: [],
-      errors: [{ row: 0, email: "N/A", error: "Could not connect to database" }],
-    }, { status: 500 })
-  }
+  const supabase = getSupabaseClient()
 
   try {
     const formData = await request.formData()
